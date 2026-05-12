@@ -1,0 +1,19 @@
+# API Keys and sensitive data
+.env
+*.env
+secrets.json
+
+# Chrome extension
+.crx
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/

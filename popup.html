@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=400">
+  <title>AskIt - Powered by MiniMax</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <h1>AskIt</h1>
+        <span class="badge">Max</span>
+      </div>
+      <button id="settingsBtn" class="icon-btn">⚙️</button>
+    </header>
+
+    <div id="settingsPanel" class="settings-panel hidden">
+      <div class="setting-item">
+        <label>API Base URL</label>
+        <input type="text" id="apiBase" placeholder="https://api.minimaxi.com/v1" value="https://api.minimaxi.com/v1">
+      </div>
+      <div class="setting-item">
+        <label>API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+      </div>
+      <div class="setting-item">
+        <label>Model</label>
+        <select id="modelName">
+          <option value="MiniMax-M2.7">MiniMax-M2.7 (Default)</option>
+          <option value="abab6.5s-chat">abab6.5s-chat</option>
+          <option value="abab6.5-chat">abab6.5-chat</option>
+          <option value="abab5.5-chat">abab5.5-chat</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <label>Temperature</label>
+        <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+        <span id="tempValue">0.7</span>
+      </div>
+      <div class="setting-item">
+        <label>Max Tokens</label>
+        <input type="number" id="maxTokens" value="2048" min="100" max="32000">
+      </div>
+      <button id="saveSettings" class="btn primary">Save Settings</button>
+      <hr>
+    </div>
+
+    <div id="chatContainer">
+      <div id="messages"></div>
+      <div id="welcome" class="welcome">
+        <div class="welcome-icon">🤖</div>
+        <p>AskIt - Powered by MiniMax</p>
+        <p class="model-info">Model: <span id="currentModel">MiniMax-M2.7</span></p>
+        <p class="hint">Select text on page → Right-click → "Ask with AskIt"</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <textarea id="userInput" placeholder="Type your question..." rows="2"></textarea>
+      <button id="sendBtn" class="btn send">➤</button>
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <span>Thinking...</span>
+    </div>
+
+    <div class="footer">
+      <span id="tokenCount">0 tokens</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
