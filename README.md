@@ -1,100 +1,129 @@
-# AskIt - AI Assistant Chrome Extension
+# AskIt - All-in-One AI Chrome Extension
 
-A Chrome extension that brings AI assistance to your browser, powered by your own API endpoint.
+A powerful Chrome extension that brings AI capabilities to your browser, powered by your own API endpoint.
 
 ## Features
 
-- 🤖 Chat with AI directly from your browser
-- 📝 Select text on any page → Right-click → "Ask with AskIt"
-- 🌊 Streaming responses for real-time answers
-- 💾 Conversation history (session-based)
-- ⚙️ Fully customizable API endpoint
-- 🎨 Beautiful dark theme
-- 📊 Token usage tracking
+### 💬 Chat
+- Real-time streaming responses
+- Conversation history
+- Markdown support
+- Multiple AI providers
 
-## Supported API Providers
+### 🖼️ Image Generation
+- Text-to-image generation
+- Multiple aspect ratios
+- Multiple model support
 
-AskIt works with any OpenAI-compatible API endpoint, including:
+### 👁️ Vision
+- Upload images for analysis
+- Ask questions about images
+- Supports base64 encoded images
 
-- **MiniMax** (default)
-- OpenAI
-- Azure OpenAI
-- Local models (via LM Studio, Ollama, etc.)
-- Custom endpoints
+### 🎤 Text to Speech
+- Multiple voice options
+- Adjustable speed
+- MP3 download
+
+### 🎵 Music Generation
+- Text-to-music
+- Duration selection
+- Multiple styles
+
+## Supported Providers
+
+| Provider | Chat | Image | Vision | TTS | Music |
+|----------|------|-------|--------|-----|-------|
+| MiniMax | ✅ | ✅ | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ✅ | - | - |
+| OpenAI | ✅ | ✅ | ✅ | ✅ | - |
 
 ## Installation
-
-### From Source
 
 1. Clone this repository:
 ```bash
 git clone https://github.com/axfinn/Askit.git
-cd Askit
 ```
 
-2. Open Chrome and go to `chrome://extensions/`
+2. Open Chrome → `chrome://extensions/`
 
-3. Enable "Developer mode" (toggle in top right)
+3. Enable "Developer mode" (top right)
 
-4. Click "Load unpacked"
+4. Click "Load unpacked" → Select `Askit` folder
 
-5. Select the `Askit` folder
+## Configuration
 
-### Configure API
+### Quick Setup
 
-1. Click the AskIt icon in your Chrome toolbar
+1. Click ⚙️ settings icon
+2. Choose a preset:
+   - **MiniMax** - Recommended (Image-01, TTS, Music included)
+   - **DeepSeek** - Good for chat
+   - **OpenAI** - GPT-4, DALL-E, TTS
 
-2. Click the ⚙️ settings icon
-
-3. Enter your API configuration:
-   - **API Base URL**: Your API endpoint (default: `https://api.minimaxi.com/v1`)
-   - **API Key**: Your API key
-   - **Model**: Your preferred model
+3. Enter your API Key
 
 4. Click "Save Settings"
 
+### Manual Configuration
+
+| Setting | Description |
+|---------|-------------|
+| API Base URL | API endpoint (default varies by provider) |
+| API Key | Your API key |
+| Model | Chat model identifier |
+
+## API Keys
+
+### MiniMax (Recommended)
+- Get key at: https://platform.minimaxi.com
+- Supports: Chat, Image-01, TTS, Music
+
+### DeepSeek
+- Get key at: https://platform.deepseek.com
+- Supports: Chat, Image
+
+### OpenAI
+- Get key at: https://platform.openai.com
+- Supports: GPT-4, DALL-E, TTS
+
 ## Usage
 
-### Quick Chat
-- Click the AskIt icon in your toolbar
-- Type your question
-- Press Enter or click Send
+### Chat
+1. Click AskIt icon in toolbar
+2. Select **💬 Chat** tab
+3. Type your question
+4. Press Enter or click ➤
 
-### Context Menu
-1. Select any text on a webpage
-2. Right-click → "Ask with AskIt"
-3. Your selected text will appear in the chat
+### Generate Image
+1. Select **🖼️ Image** tab
+2. Enter your prompt
+3. Choose size and model
+4. Click "Generate Image"
 
-### Keyboard Shortcuts
-- `Enter`: Send message
-- `Shift + Enter`: New line in message
+### Analyze Image
+1. Select **👁️ Vision** tab
+2. Upload an image
+3. Enter your question
+4. Click "Analyze Image"
 
-## For MiniMax Users
+### Text to Speech
+1. Select **🎤 TTS** tab
+2. Enter text
+3. Choose voice and speed
+4. Click "Generate Speech"
 
-If you're using MiniMax API:
-
-1. Get your API key from [MiniMax Platform](https://platform.minimaxi.com)
-2. Use these settings:
-   - API Base URL: `https://api.minimaxi.com/v1`
-   - Model: `MiniMax-M2.7` (or your preferred model)
-
-## API Configuration
-
-AskIt supports models via OpenAI-compatible APIs:
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| API Base URL | Your API endpoint | `https://api.minimaxi.com/v1` |
-| API Key | Your API key | - |
-| Model | Model identifier | `MiniMax-M2.7` |
-| Temperature | Creativity level (0-1) | `0.7` |
-| Max Tokens | Maximum response length | `2048` |
+### Generate Music
+1. Select **🎵 Music** tab
+2. Enter music description
+3. Choose duration
+4. Click "Generate Music"
 
 ## Privacy
 
-- Your API key is stored locally in Chrome storage
-- No data is sent to any third-party servers (except your configured API endpoint)
-- Conversation history is stored locally per session
+- API keys stored locally in Chrome storage
+- No third-party data sharing
+- All API calls go directly to your configured provider
 
 ## License
 

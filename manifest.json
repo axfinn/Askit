@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "AskIt",
-  "version": "1.0.0",
-  "description": "AI Assistant powered by your own API - Ask anything, anywhere",
+  "name": "AskIt - All-in-One AI",
+  "version": "2.0.0",
+  "description": "AI Assistant: Chat, Image, Vision, TTS, Music - Powered by your own API",
   "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://api.minimaxi.com/*",
+    "https://api.deepseek.com/*",
+    "https://api.openai.com/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
