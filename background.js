@@ -1,6 +1,6 @@
 // Background service worker for AskIt
 
-// Store for page actions when popup is closed
+// Store for pending page actions when popup is not open
 let pendingPageAction = null;
 
 // Create context menu on install
@@ -16,63 +16,84 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // From content script: capture screenshot
   if (request.action === 'captureScreenshot') {
-    chrome.tabs.captureVisibleTab({ format: 'png' }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        sendResponse({ error: chrome.runtime.lastError.message });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].id !== chrome.tabs.TAB_ID_NONE) {
+        chrome.tabs.captureVisibleTab(tabs[0].windowId, { format: 'png' }, (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('Screenshot error:', chrome.runtime.lastError);
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ imageData: dataUrl });
+          }
+        });
       } else {
-        sendResponse({ imageData: dataUrl });
+        sendResponse({ error: 'Cannot capture: no active tab' });
       }
-    });
-    return true; // Keep channel open for async response
-  }
-
-  // From content script: page action (summarize, translate, screenshot, etc.)
-  if (request.action === 'pageAction') {
-    pendingPageAction = request;
-
-    // Try to send to popup if open
-    chrome.runtime.sendMessage({
-      action: 'pageAction',
-      ...request
-    }).catch(() => {
-      // Popup not open - will check on popup open
     });
     return true;
   }
 
-  // From popup: request for pending page action
+  // From content script: page action (summarize, translate, screenshot, chat, extract)
+  if (request.action === 'pageAction') {
+    pendingPageAction = request;
+
+    // Send to popup if it's open, otherwise store for later
+    chrome.runtime.sendMessage({
+      action: 'notifyPageAction',
+      ...request
+    }).catch(() => {
+      // Popup not open - will retrieve when popup opens
+    });
+    return true;
+  }
+
+  // From popup: get pending page action
   if (request.action === 'getPendingPageAction') {
     sendResponse(pendingPageAction);
     pendingPageAction = null;
     return true;
   }
 
-  // From content script: show selection (text selected)
-  if (request.action === 'showSelection' && request.text) {
-    chrome.runtime.sendMessage({
-      action: 'showSelection',
-      text: request.text
-    }).catch(() => {
-      // Popup not open
-    });
+  // From popup: clear pending action
+  if (request.action === 'clearPendingPageAction') {
+    pendingPageAction = null;
     return true;
   }
+
+  // From content script: context menu selection
+  if (request.action === 'contextMenuSelection') {
+    pendingPageAction = {
+      action: 'pageAction',
+      type: 'extract',
+      content: request.text
+    };
+    return true;
+  }
+
+  return true;
 });
 
 // Handle context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'askWithAskIt' && info.selectionText) {
     // Send selected text to popup
+    pendingPageAction = {
+      action: 'pageAction',
+      type: 'extract',
+      content: info.selectionText
+    };
+
     chrome.runtime.sendMessage({
-      action: 'showSelection',
-      text: info.selectionText
+      action: 'notifyPageAction',
+      type: 'extract',
+      content: info.selectionText
     }).catch(() => {
       // Popup not open
     });
   }
 });
 
-// Badge text
+// Badge
 chrome.runtime.onStartup.addListener(() => {
   chrome.action.setBadgeText({ text: 'AI' });
 });

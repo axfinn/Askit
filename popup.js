@@ -649,7 +649,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     document.querySelector('[data-tab="chat"]').click();
   }
 
-  if (request.action === 'pageAction') {
+  if (request.action === 'notifyPageAction' || request.action === 'pageAction') {
     handlePageAction(request);
   }
 });
