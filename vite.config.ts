@@ -7,6 +7,7 @@ const isContentScript = process.env.BUILD_TARGET === 'content'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: './',
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
   },

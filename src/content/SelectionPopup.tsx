@@ -114,44 +114,34 @@ export function SelectionPopup() {
   return (
     <div
       ref={popupRef}
-      className="absolute z-[99997]"
-      style={{ left: `${position.x}px`, top: `${position.y}px`, transform: 'translateX(-50%)' }}
+      style={{ position: 'absolute', left: `${position.x}px`, top: `${position.y}px`, transform: 'translateX(-50%)', zIndex: 99997 }}
     >
-      {/* Action buttons */}
-      <div className="flex gap-1 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-violet-500/30 rounded-full px-3 py-2 shadow-xl shadow-black/40 animate-fade-in">
+      <div className="askit-sel-popup">
         {ACTIONS.map((action) => (
           <button
             key={action.id}
             onClick={() => handleAction(action.id)}
             title={action.label}
-            className="w-8 h-8 rounded-full bg-white/10 text-sm flex items-center justify-center hover:bg-violet-600/50 hover:scale-110 transition-all border-0 cursor-pointer"
+            className="askit-sel-btn"
           >
             {action.icon}
           </button>
         ))}
       </div>
 
-      {/* Inline result */}
       {showResult && (
-        <div className="mt-2 w-[320px] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-violet-500/20 rounded-xl p-4 shadow-2xl shadow-black/50 animate-fade-in">
+        <div className="askit-inline-result">
           {loading ? (
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
-              <div className="w-4 h-4 border-2 border-white/10 border-t-violet-500 rounded-full animate-spin" />
+            <div className="loading">
+              <div className="spinner" />
               <span>Thinking...</span>
             </div>
           ) : (
             <>
-              <div
-                className="text-gray-200 text-sm leading-relaxed prose prose-invert prose-sm max-w-none [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-2 [&_code]:text-xs"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }}
-              />
-              <div className="flex gap-2 mt-3 pt-2 border-t border-white/10">
-                <button onClick={handleCopy} className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs hover:bg-white/10 border border-white/10 cursor-pointer transition-all">
-                  📋 复制
-                </button>
-                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs hover:bg-white/10 border border-white/10 cursor-pointer transition-all">
-                  ✕ 关闭
-                </button>
+              <div className="content" dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
+              <div className="actions">
+                <button className="action-btn" onClick={handleCopy}>📋 复制</button>
+                <button className="action-btn" onClick={handleClose}>✕ 关闭</button>
               </div>
             </>
           )}
