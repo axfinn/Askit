@@ -1,5 +1,16 @@
 // AskIt - AI Assistant Chrome Extension
-// Supports MiniMax API with streaming, function calling, and vision
+// Supports MiniMax, DeepSeek, and any OpenAI-compatible API
+
+const PRESETS = {
+  minimax: {
+    apiBase: 'https://api.minimaxi.com/v1',
+    model: 'MiniMax-M2.7'
+  },
+  deepseek: {
+    apiBase: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat'
+  }
+};
 
 const messagesContainer = document.getElementById('messages');
 const userInput = document.getElementById('userInput');
@@ -10,14 +21,21 @@ const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const saveSettingsBtn = document.getElementById('saveSettings');
 const currentModelSpan = document.getElementById('currentModel');
+const providerNameSpan = document.getElementById('providerName');
 const tempSlider = document.getElementById('temperature');
 const tempValue = document.getElementById('tempValue');
 const tokenCount = document.getElementById('tokenCount');
+const apiProvider = document.getElementById('apiProvider');
+const apiBase = document.getElementById('apiBase');
+const modelName = document.getElementById('modelName');
+const presetMinimax = document.getElementById('presetMinimax');
+const presetDeepseek = document.getElementById('presetDeepseek');
 
-// Default settings - MiniMax Max Plan
+// Default settings
 let settings = {
+  apiProvider: 'minimax',
   apiBase: 'https://api.minimaxi.com/v1',
-  apiKey: '',  // Set your API key in settings
+  apiKey: '',
   model: 'MiniMax-M2.7',
   temperature: 0.7,
   maxTokens: 2048
@@ -28,19 +46,57 @@ chrome.storage.sync.get(['askit_settings'], (result) => {
   if (result.askit_settings) {
     settings = { ...settings, ...result.askit_settings };
   }
-  // Update UI
-  document.getElementById('apiBase').value = settings.apiBase;
-  document.getElementById('apiKey').value = settings.apiKey;
-  document.getElementById('modelName').value = settings.model;
-  document.getElementById('temperature').value = settings.temperature;
-  document.getElementById('maxTokens').value = settings.maxTokens;
-  tempValue.textContent = settings.temperature;
-  currentModelSpan.textContent = settings.model;
+  updateUI();
 });
+
+// Update UI with current settings
+function updateUI() {
+  apiBase.value = settings.apiBase;
+  document.getElementById('apiKey').value = settings.apiKey;
+  modelName.value = settings.model;
+  apiProvider.value = settings.apiProvider;
+  tempSlider.value = settings.temperature;
+  tempValue.textContent = settings.temperature;
+  document.getElementById('maxTokens').value = settings.maxTokens;
+  currentModelSpan.textContent = settings.model;
+  providerNameSpan.textContent = settings.apiProvider === 'minimax' ? 'MiniMax' : settings.apiProvider === 'deepseek' ? 'DeepSeek' : 'Custom';
+  updatePresetButtons();
+}
+
+// Update preset button states
+function updatePresetButtons() {
+  presetMinimax.classList.toggle('active', settings.apiProvider === 'minimax');
+  presetDeepseek.classList.toggle('active', settings.apiProvider === 'deepseek');
+}
 
 // Toggle settings panel
 settingsBtn.addEventListener('click', () => {
   settingsPanel.classList.toggle('hidden');
+});
+
+// Preset buttons
+presetMinimax.addEventListener('click', () => {
+  settings.apiProvider = 'minimax';
+  settings.apiBase = PRESETS.minimax.apiBase;
+  settings.model = PRESETS.minimax.model;
+  apiProvider.value = 'minimax';
+  apiBase.value = settings.apiBase;
+  modelName.value = settings.model;
+  currentModelSpan.textContent = settings.model;
+  providerNameSpan.textContent = 'MiniMax';
+  updatePresetButtons();
+});
+
+presetDeepseek.addEventListener('click', () => {
+  settings.apiProvider = 'deepseek';
+  settings.apiBase = PRESETS.deepseek.apiBase;
+  settings.model = PRESETS.deepseek.model;
+  apiProvider.value = 'deepseek';
+  apiBase.value = settings.apiBase;
+  modelName.value = settings.model;
+  currentModelSpan.textContent = settings.model;
+  providerNameSpan.textContent = 'DeepSeek';
+  updatePresetButtons();
 });
 
 // Temperature slider
@@ -50,9 +106,10 @@ tempSlider.addEventListener('input', () => {
 
 // Save settings
 saveSettingsBtn.addEventListener('click', () => {
-  settings.apiBase = document.getElementById('apiBase').value.trim() || 'https://api.minimaxi.com/v1';
+  settings.apiProvider = apiProvider.value;
+  settings.apiBase = apiBase.value.trim();
   settings.apiKey = document.getElementById('apiKey').value.trim();
-  settings.model = document.getElementById('modelName').value;
+  settings.model = modelName.value.trim();
   settings.temperature = parseFloat(tempSlider.value);
   settings.maxTokens = parseInt(document.getElementById('maxTokens').value) || 2048;
 
@@ -60,6 +117,8 @@ saveSettingsBtn.addEventListener('click', () => {
     showToast('Settings saved!');
     settingsPanel.classList.add('hidden');
     currentModelSpan.textContent = settings.model;
+    providerNameSpan.textContent = settings.apiProvider === 'minimax' ? 'MiniMax' : settings.apiProvider === 'deepseek' ? 'DeepSeek' : 'Custom';
+    updatePresetButtons();
   });
 });
 
@@ -99,7 +158,7 @@ async function sendMessage() {
       body: JSON.stringify({
         model: settings.model,
         messages: [
-          { role: 'system', content: 'You are a helpful AI assistant. Keep responses concise and clear. You can use markdown formatting in your responses.' },
+          { role: 'system', content: 'You are a helpful AI assistant. Keep responses concise and clear. You can use markdown formatting.' },
           ...history
         ],
         temperature: settings.temperature,
@@ -181,7 +240,6 @@ let conversationHistory = [];
 
 function addToHistory(role, content) {
   conversationHistory.push({ role, content });
-  // Keep last 20 messages
   if (conversationHistory.length > 20) {
     conversationHistory = conversationHistory.slice(-20);
   }
@@ -196,7 +254,6 @@ function getConversationHistory() {
 chrome.storage.session.get(['conversation_history'], (result) => {
   if (result.conversation_history) {
     conversationHistory = result.conversation_history;
-    // Display history on load
     if (conversationHistory.length > 0) {
       welcome.style.display = 'none';
       conversationHistory.forEach(msg => {
@@ -206,7 +263,7 @@ chrome.storage.session.get(['conversation_history'], (result) => {
   }
 });
 
-// Simple toast notification
+// Toast notification
 function showToast(text) {
   const toast = document.createElement('div');
   toast.className = 'toast';
