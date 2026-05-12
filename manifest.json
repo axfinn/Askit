@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "AskIt - All-in-One AI",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "AI Assistant: Chat, Image, Vision, TTS, Music - Powered by your own API",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": [
     "https://api.minimaxi.com/*",
     "https://api.deepseek.com/*",
@@ -24,5 +24,13 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ]
 }

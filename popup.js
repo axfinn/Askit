@@ -543,11 +543,257 @@ function showToast(text) {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// Listen for context menu
+// Listen for context menu and page actions
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'showSelection' && request.text) {
     document.getElementById('chatInput').value = request.text;
     document.getElementById('chatInput').focus();
     document.querySelector('[data-tab="chat"]').click();
   }
+
+  if (request.action === 'pageAction') {
+    handlePageAction(request);
+  }
 });
+
+// Handle page actions from content script
+async function handlePageAction(request) {
+  const { type, title, content, imageData } = request;
+
+  // Switch to chat tab
+  document.querySelector('[data-tab="chat"]').click();
+
+  switch(type) {
+    case 'summarize':
+      await summarizePageContent(title, content);
+      break;
+    case 'translate':
+      await translatePageContent(title, content);
+      break;
+    case 'chat':
+      await chatAboutPageContent(title, content);
+      break;
+    case 'extract':
+      addMessage('user', content);
+      showToast('Text extracted! Edit and send your message.');
+      break;
+    case 'screenshot':
+      await analyzeScreenshot(imageData);
+      break;
+  }
+}
+
+// Analyze screenshot
+async function analyzeScreenshot(imageData) {
+  if (!settings.apiKey) {
+    addMessage('bot', 'Please set your API Key in settings');
+    return;
+  }
+
+  if (!imageData) {
+    addMessage('bot', 'Screenshot capture failed');
+    return;
+  }
+
+  welcome.style.display = 'none';
+  showLoading('Analyzing screenshot...');
+
+  const botMsg = addMessage('user', '📸 Analyze this screenshot');
+  const botMsg2 = addMessage('bot', '');
+
+  try {
+    if (settings.apiProvider === 'minimax') {
+      // Use MiniMax VLM API
+      const response = await fetch(`${settings.apiBase}/coding_plan/vlm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          prompt: '请详细描述这张截图的内容，包括所有文字、界面元素和操作。',
+          image_url: imageData
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.base_resp?.status_msg || `API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      botMsg2.textContent = data.content || 'No description returned';
+    } else {
+      // Use OpenAI-compatible vision API
+      const base64Data = imageData.split(',')[1];
+
+      const response = await fetch(`${settings.apiBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Please describe this screenshot in detail, including any text, UI elements, and actions.' },
+                { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Data}` } }
+              ]
+            }
+          ],
+          max_tokens: 1000
+        })
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+      const data = await response.json();
+      botMsg2.textContent = data.choices?.[0]?.message?.content || 'No response';
+    }
+  } catch (error) {
+    botMsg2.textContent = `Error: ${error.message}`;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Summarize page content
+async function summarizePageContent(title, content) {
+  if (!settings.apiKey) {
+    addMessage('bot', 'Please set your API Key in settings');
+    return;
+  }
+
+  welcome.style.display = 'none';
+  showLoading('Summarizing page...');
+
+  const prompt = `Please summarize the following content from "${title}" in a concise way:\n\n${content}`;
+
+  const botMsg = addMessage('user', `📄 Summarize: ${title}`);
+  const botMsg2 = addMessage('bot', '');
+
+  try {
+    const response = await fetch(`${settings.apiBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant that summarizes content concisely. Keep summaries to 3-5 key points.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.5,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const summary = data.choices?.[0]?.message?.content || 'Failed to summarize';
+
+    botMsg2.textContent = summary;
+  } catch (error) {
+    botMsg2.textContent = `Error: ${error.message}`;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Translate page content
+async function translatePageContent(title, content) {
+  if (!settings.apiKey) {
+    addMessage('bot', 'Please set your API Key in settings');
+    return;
+  }
+
+  welcome.style.display = 'none';
+  showLoading('Translating page...');
+
+  const prompt = `Translate the following content from "${title}" to Chinese:\n\n${content}`;
+
+  const botMsg = addMessage('user', `🌐 Translate: ${title}`);
+  const botMsg2 = addMessage('bot', '');
+
+  try {
+    const response = await fetch(`${settings.apiBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: 'You are a helpful translator. Translate the content to Chinese naturally.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.5,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const translation = data.choices?.[0]?.message?.content || 'Failed to translate';
+
+    botMsg2.textContent = translation;
+  } catch (error) {
+    botMsg2.textContent = `Error: ${error.message}`;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Chat about page content
+async function chatAboutPageContent(title, content) {
+  if (!settings.apiKey) {
+    addMessage('bot', 'Please set your API Key in settings');
+    return;
+  }
+
+  welcome.style.display = 'none';
+  showLoading('Analyzing page...');
+
+  const prompt = `Here's the content from "${title}":\n\n${content.substring(0, 3000)}\n\nWhat is this page about? Answer briefly.`;
+
+  const botMsg = addMessage('user', `💬 About this page: ${title}`);
+  const botMsg2 = addMessage('bot', '');
+
+  try {
+    const response = await fetch(`${settings.apiBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant. Analyze the page content and give a brief summary.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const answer = data.choices?.[0]?.message?.content || 'No response';
+
+    botMsg2.textContent = answer;
+  } catch (error) {
+    botMsg2.textContent = `Error: ${error.message}`;
+  } finally {
+    hideLoading();
+  }
+}
