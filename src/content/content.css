@@ -85,6 +85,30 @@
 }
 .askit-close-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
+/* Tabs */
+.askit-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.askit-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.askit-tab:hover { background: rgba(255, 255, 255, 0.08); color: #ccc; }
+.askit-tab.active {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #fff;
+}
+
 /* Quick Tools Bar */
 .askit-tools {
   display: flex;
@@ -318,3 +342,33 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
+
+/* Tools Page */
+.askit-tools-page {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.askit-tool-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  color: #eee;
+}
+.askit-tool-card:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.3);
+}
+.askit-tool-card-icon { font-size: 24px; }
+.askit-tool-card-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.askit-tool-card-desc { font-size: 11px; color: #888; }
