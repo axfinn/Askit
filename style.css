@@ -339,6 +339,44 @@ hr {
   text-align: center;
 }
 
+.lyrics-area {
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.lyrics-area.hidden {
+  display: none;
+}
+
+.lyrics-area textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.lyrics-area textarea:focus {
+  outline: none;
+  border-color: #6c5ce7;
+}
+
+.btn.secondary {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.btn.secondary:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 .result-area img {
   max-width: 100%;
   border-radius: 8px;

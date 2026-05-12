@@ -454,18 +454,79 @@ async function generateTTS() {
   }
 }
 
-// ==================== MUSIC ====================
+// ==================== MUSIC + LYRICS ====================
 function initMusic() {
-  document.getElementById('generateMusic').addEventListener('click', generateMusic);
+  document.getElementById('generateLyrics').addEventListener('click', generateLyrics);
+  document.getElementById('generateMusicWithLyrics').addEventListener('click', generateMusicWithLyrics);
 }
 
-async function generateMusic() {
-  const prompt = document.getElementById('musicPrompt').value.trim();
+// Generate lyrics from theme
+async function generateLyrics() {
+  const theme = document.getElementById('musicTheme').value.trim();
+  const lyricsResult = document.getElementById('lyricsResult');
+  const lyricsText = document.getElementById('lyricsText');
+
+  if (!theme || !settings.apiKey) {
+    if (!settings.apiKey) alert('Please set API Key in settings');
+    return;
+  }
+
+  showLoading('Generating lyrics...');
+
+  try {
+    const response = await fetch(`${settings.apiBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: 'You are a creative songwriter. Write original song lyrics based on the theme. Include verse, chorus structure. Write in Chinese unless theme is in English.' },
+          { role: 'user', content: `Write song lyrics about: ${theme}` }
+        ],
+        temperature: 0.8,
+        max_tokens: 800
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const lyrics = data.choices?.[0]?.message?.content || '';
+
+    lyricsText.value = lyrics;
+    lyricsResult.classList.remove('hidden');
+    showToast('Lyrics generated!');
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  } finally {
+    hideLoading();
+  }
+}
+
+// Generate music with lyrics
+async function generateMusicWithLyrics() {
+  const theme = document.getElementById('musicTheme').value.trim();
+  const style = document.getElementById('musicStyle').value.trim();
+  const lyrics = document.getElementById('lyricsText').value.trim();
   const duration = document.getElementById('musicDuration').value;
   const resultDiv = document.getElementById('musicResult');
 
-  if (!prompt || !settings.apiKey) {
-    if (!settings.apiKey) resultDiv.innerHTML = '<p class="error">Please set API Key in settings</p>';
+  if (!settings.apiKey) {
+    resultDiv.innerHTML = '<p class="error">Please set API Key in settings</p>';
+    return;
+  }
+
+  // Build prompt from lyrics
+  let musicPrompt = '';
+  if (lyrics) {
+    musicPrompt = `${style ? style + '. ' : ''}Lyrics: ${lyrics.substring(0, 500)}`;
+  } else if (theme) {
+    musicPrompt = `${style ? style + '. ' : ''}Theme: ${theme}`;
+  } else {
+    resultDiv.innerHTML = '<p class="error">Please enter a theme or generate lyrics first</p>';
     return;
   }
 
@@ -481,7 +542,7 @@ async function generateMusic() {
       },
       body: JSON.stringify({
         model: 'music-01',
-        prompt,
+        prompt: musicPrompt,
         duration: parseInt(duration)
       })
     });

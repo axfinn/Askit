@@ -174,12 +174,23 @@
     <div id="musicTab" class="tab-content">
       <div class="tool-container">
         <div class="tool-header">
-          <h3>🎵 Music Generation</h3>
+          <h3>🎵 Music + Lyrics</h3>
         </div>
         <div class="tool-body">
           <div class="setting-item">
-            <label>Prompt</label>
-            <textarea id="musicPrompt" placeholder="A relaxing piano melody with nature sounds..." rows="3"></textarea>
+            <label>Theme / Topic</label>
+            <textarea id="musicTheme" placeholder="A love story about longing and reunion..." rows="2"></textarea>
+          </div>
+          <button id="generateLyrics" class="btn secondary">✨ Generate Lyrics First</button>
+          <div id="lyricsResult" class="lyrics-area hidden">
+            <div class="setting-item">
+              <label>Generated Lyrics</label>
+              <textarea id="lyricsText" rows="6" placeholder="Generated lyrics will appear here..."></textarea>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>Music Style</label>
+            <textarea id="musicStyle" placeholder="Pop ballad, emotional, piano accompaniment..." rows="2"></textarea>
           </div>
           <div class="setting-item">
             <label>Duration</label>
@@ -190,7 +201,7 @@
               <option value="60">60 seconds</option>
             </select>
           </div>
-          <button id="generateMusic" class="btn primary">Generate Music</button>
+          <button id="generateMusicWithLyrics" class="btn primary">🎵 Generate Music with Lyrics</button>
           <div id="musicResult" class="result-area"></div>
         </div>
       </div>
