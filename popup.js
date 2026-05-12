@@ -6,6 +6,7 @@ const PRESETS = {
   minimax: {
     apiBase: 'https://api.minimaxi.com/v1',
     chatModel: 'MiniMax-M2.7',
+    vlmModel: 'coding_plan/vlm',
     imageModel: 'image-01',
     ttsModel: 'speech-01',
     musicModel: 'music-01'
@@ -13,6 +14,7 @@ const PRESETS = {
   deepseek: {
     apiBase: 'https://api.deepseek.com/v1',
     chatModel: 'deepseek-chat',
+    vlmModel: null,
     imageModel: 'deepseek-image',
     ttsModel: null,
     musicModel: null
@@ -20,6 +22,7 @@ const PRESETS = {
   openai: {
     apiBase: 'https://api.openai.com/v1',
     chatModel: 'gpt-4o',
+    vlmModel: 'gpt-4o',
     imageModel: 'dall-e-3',
     ttsModel: 'tts-1',
     musicModel: null
@@ -182,6 +185,9 @@ async function sendChatMessage() {
   let fullContent = '';
 
   try {
+    const history = getConversationHistory();
+    history.push({ role: 'user', content: text });
+
     const response = await fetch(`${settings.apiBase}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -192,7 +198,7 @@ async function sendChatMessage() {
         model: settings.model,
         messages: [
           { role: 'system', content: 'You are a helpful AI assistant. Keep responses concise and clear.' },
-          ...conversationHistory,
+          ...history,
           { role: 'user', content: text }
         ],
         temperature: settings.temperature,
@@ -289,7 +295,7 @@ async function generateImage() {
   }
 }
 
-// ==================== VISION ====================
+// ==================== VISION (Image Understanding) ====================
 function initVision() {
   const fileInput = document.getElementById('visionImage');
   const preview = document.getElementById('visionPreview');
@@ -312,7 +318,7 @@ function initVision() {
 
 async function analyzeImage() {
   const fileInput = document.getElementById('visionImage');
-  const question = document.getElementById('visionQuestion').value.trim() || 'What is in this image?';
+  const question = document.getElementById('visionQuestion').value.trim() || '请描述这张图片的内容';
   const resultDiv = document.getElementById('visionResult');
 
   if (!fileInput.files?.[0] || !settings.apiKey) {
@@ -324,33 +330,60 @@ async function analyzeImage() {
   resultDiv.innerHTML = '';
 
   try {
+    // Convert image to base64
     const base64 = await fileToBase64(fileInput.files[0]);
+    const mimeType = fileInput.files[0].type || 'image/jpeg';
+    const imageDataUrl = `data:${mimeType};base64,${base64}`;
 
-    const response = await fetch(`${settings.apiBase}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: question },
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } }
-            ]
-          }
-        ]
-      })
-    });
+    if (settings.apiProvider === 'minimax') {
+      // Use MiniMax VLM API
+      const response = await fetch(`${settings.apiBase}/coding_plan/vlm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          prompt: question,
+          image_url: imageDataUrl
+        })
+      });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.base_resp?.status_msg || `API error: ${response.status}`);
+      }
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || 'No response';
-    resultDiv.innerHTML = `<div class="text-result">${text}</div>`;
+      const data = await response.json();
+      resultDiv.innerHTML = `<div class="text-result">${data.content || 'No description returned'}</div>`;
+    } else {
+      // Use OpenAI-compatible vision API
+      const response = await fetch(`${settings.apiBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: question },
+                { type: 'image_url', image_url: { url: imageDataUrl } }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || 'No response';
+      resultDiv.innerHTML = `<div class="text-result">${text}</div>`;
+    }
   } catch (error) {
     resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
   } finally {
@@ -487,6 +520,10 @@ function addToHistory(role, content) {
   conversationHistory.push({ role, content });
   if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
   chrome.storage.session.set({ conversation_history: conversationHistory });
+}
+
+function getConversationHistory() {
+  return conversationHistory.slice(-20);
 }
 
 function showLoading(text) {
