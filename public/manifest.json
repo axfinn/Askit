@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "AskIt - All-in-One AI",
-  "version": "3.1.0",
-  "description": "AI Assistant: Chat, Image, Vision, TTS, Music - Powered by your own API",
+  "name": "AskIt - AI Assistant",
+  "version": "4.0.0",
+  "description": "MaxAI-style AI Assistant: Chat, Summarize, Translate, Image, TTS, Music",
   "permissions": ["activeTab", "storage", "tabs", "contextMenus"],
   "host_permissions": [
     "https://api.minimaxi.com/*",
     "https://api.deepseek.com/*",
-    "https://api.openai.com/*"
+    "https://api.openai.com/*",
+    "https://*/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -23,14 +24,20 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "commands": {
+    "toggle-sidebar": {
+      "suggested_key": { "default": "Alt+J" },
+      "description": "Toggle AskIt Sidebar"
+    }
+  }
 }
