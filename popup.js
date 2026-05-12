@@ -98,6 +98,58 @@ function clearHistory() {
   }
 }
 
+// ==================== MUSIC HISTORY ====================
+let musicHistory = [];
+
+function loadMusicHistory() {
+  chrome.storage.local.get(['music_history'], (result) => {
+    if (result.music_history) {
+      musicHistory = result.music_history;
+      renderMusicHistory();
+    }
+  });
+}
+
+function saveMusicToHistory(url, title) {
+  const item = {
+    id: Date.now(),
+    url: url,
+    title: title.substring(0, 50),
+    time: new Date().toLocaleTimeString()
+  };
+  musicHistory.unshift(item);
+  if (musicHistory.length > 10) musicHistory = musicHistory.slice(0, 10);
+  chrome.storage.local.set({ music_history: musicHistory });
+  renderMusicHistory();
+}
+
+function renderMusicHistory() {
+  const historyDiv = document.getElementById('musicHistory');
+  const listDiv = document.getElementById('musicHistoryList');
+
+  if (musicHistory.length === 0) {
+    historyDiv.classList.add('hidden');
+    return;
+  }
+
+  historyDiv.classList.remove('hidden');
+  listDiv.innerHTML = musicHistory.map(item => `
+    <div class="music-history-item" data-id="${item.id}">
+      <audio controls src="${item.url}"></audio>
+      <div class="music-info">${item.title} • ${item.time}</div>
+    </div>
+  `).join('');
+}
+
+function clearMusicHistory() {
+  if (confirm('Delete all music history?')) {
+    musicHistory = [];
+    chrome.storage.local.remove(['music_history']);
+    renderMusicHistory();
+    showToast('Music history deleted');
+  }
+}
+
 // ==================== SETTINGS ====================
 function loadSettings() {
   chrome.storage.sync.get(['askit_settings'], (result) => {
@@ -492,6 +544,8 @@ async function generateTTS() {
 function initMusic() {
   document.getElementById('generateLyrics').addEventListener('click', generateLyrics);
   document.getElementById('generateMusicWithLyrics').addEventListener('click', generateMusicWithLyrics);
+  document.getElementById('clearMusicHistory').addEventListener('click', clearMusicHistory);
+  loadMusicHistory();
 }
 
 // Generate lyrics from theme
@@ -594,6 +648,8 @@ async function generateMusicWithLyrics() {
         <audio controls src="${musicUrl}"></audio>
         <a href="${musicUrl}" target="_blank" class="btn secondary">Open Music</a>
       `;
+      // Save to history
+      saveMusicToHistory(musicUrl, theme || 'Generated Music');
     } else {
       resultDiv.innerHTML = '<p class="error">No music URL in response</p>';
     }

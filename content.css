@@ -1,99 +1,438 @@
 /* AskIt Content Script Styles */
 
+/* ============ FLOATING BUTTON ============ */
 #askit-float-btn {
   position: fixed;
-  bottom: 80px;
+  bottom: 30px;
   right: 20px;
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   background: linear-gradient(135deg, #6c5ce7, #a29bfe);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 26px;
   cursor: pointer;
   z-index: 999999;
-  box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.5);
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
 }
 
 #askit-float-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(108, 92, 231, 0.5);
+  box-shadow: 0 6px 25px rgba(108, 92, 231, 0.6);
 }
 
-#askit-panel {
+#askit-float-btn.active {
+  background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(108, 92, 231, 0.5); }
+  50% { box-shadow: 0 4px 30px rgba(108, 92, 231, 0.8); }
+}
+
+/* ============ RIGHT SIDE DRAWER ============ */
+#askit-drawer {
   position: fixed;
-  bottom: 140px;
-  right: 20px;
-  width: 220px;
-  background: #1a1a2e;
-  border-radius: 12px;
-  z-index: 999999;
+  top: 0;
+  right: -400px;
+  width: 380px;
+  height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  z-index: 999998;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+  box-shadow: -5px 0 30px rgba(0, 0, 0, 0.4);
+}
+
+#askit-drawer.active {
+  right: 0;
+}
+
+/* Drawer Header */
+.askit-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.askit-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.askit-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.askit-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Drawer Tabs */
+.askit-drawer-tabs {
+  display: flex;
+  padding: 12px 16px;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.askit-drawer-tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 8px;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.askit-drawer-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.askit-drawer-tab.active {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+}
+
+/* Drawer Content */
+.askit-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.askit-tab-panel {
   display: none;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.askit-tab-panel.active {
+  display: block;
+}
+
+/* Context Hint */
+.askit-context-hint {
+  background: rgba(108, 92, 231, 0.2);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  color: #a29bfe;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Quick Actions Grid */
+.askit-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.askit-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #eee;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.askit-action-btn:hover {
+  background: rgba(108, 92, 231, 0.3);
+  border-color: rgba(108, 92, 231, 0.5);
+  transform: translateY(-2px);
+}
+
+.askit-action-btn .icon {
+  font-size: 24px;
+}
+
+.askit-action-btn .label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Selection Preview */
+.askit-selection-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.askit-selection-label {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.askit-selection-text {
+  font-size: 13px;
+  color: #eee;
+  line-height: 1.5;
+  max-height: 80px;
   overflow: hidden;
 }
 
-#askit-panel.active {
-  display: block;
-  animation: slideUp 0.2s ease;
+/* Chat Messages */
+.askit-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 16px;
 }
 
-@keyframes slideUp {
+.askit-welcome-msg {
+  text-align: center;
+  padding: 30px 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.askit-msg {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.askit-panel-header {
+.askit-msg-user {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  margin-left: 20px;
+  border-bottom-right-radius: 4px;
+}
+
+.askit-msg-bot {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  margin-right: 20px;
+  border-bottom-left-radius: 4px;
+}
+
+/* Chat Input Area */
+.askit-chat-input-area {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+}
+
+.askit-chat-input-area textarea {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  resize: none;
+}
+
+.askit-chat-input-area textarea:focus {
+  outline: none;
+  border-color: #6c5ce7;
+}
+
+#askitChatSend {
   padding: 12px 16px;
   background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-  color: white;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#askitChatSend:hover {
+  transform: scale(1.05);
+}
+
+/* Tools Panel */
+.askit-tool-item {
+  margin-bottom: 16px;
+}
+
+.askit-tool-item label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.askit-tool-value {
+  font-size: 14px;
+  color: #eee;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.askit-tool-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #eee;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.askit-tool-btn:hover {
+  background: rgba(108, 92, 231, 0.3);
+  border-color: #6c5ce7;
+}
+
+.askit-tool-item select {
+  width: 100%;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+/* Drawer Footer */
+.askit-drawer-footer {
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.askit-credits {
+  text-align: center;
+  font-size: 11px;
+  color: #555;
+}
+
+/* ============ SELECTION TOOLTIP ============ */
+#askit-tooltip {
+  position: absolute;
+  z-index: 999999;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-radius: 10px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5);
+  padding: 10px 14px;
+  cursor: pointer;
+  display: none;
+  font-size: 13px;
+  border: 1px solid rgba(108, 92, 231, 0.3);
+}
+
+.askit-tooltip-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.askit-tooltip-icon {
+  font-size: 16px;
+}
+
+.askit-tooltip-text {
+  color: #fff;
   font-weight: 600;
 }
 
-#askit-close {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
+.askit-tooltip-actions {
+  display: none;
+  margin-top: 10px;
+  gap: 6px;
 }
 
-#askit-close:hover {
-  opacity: 0.8;
+#askit-tooltip:hover .askit-tooltip-actions {
+  display: flex;
 }
 
-.askit-panel-content {
-  padding: 8px;
-}
-
-.askit-action {
-  width: 100%;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  border-radius: 8px;
-  color: #eee;
-  font-size: 14px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.2s;
-  margin-bottom: 4px;
-}
-
-.askit-action:hover {
-  background: rgba(108, 92, 231, 0.3);
-}
-
-.askit-divider {
-  height: 1px;
+.askit-quick-btn {
   background: rgba(255, 255, 255, 0.1);
-  margin: 8px 0;
+  border: none;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.askit-quick-btn:hover {
+  background: rgba(108, 92, 231, 0.6);
+}
+
+/* ============ SCROLLBAR ============ */
+.askit-drawer-content::-webkit-scrollbar,
+.askit-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.askit-drawer-content::-webkit-scrollbar-track,
+.askit-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.askit-drawer-content::-webkit-scrollbar-thumb,
+.askit-chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.askit-drawer-content::-webkit-scrollbar-thumb:hover,
+.askit-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ============ OLD PANEL (keep for compatibility) ============ */
+#askit-panel {
+  display: none !important;
 }

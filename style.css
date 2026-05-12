@@ -412,6 +412,44 @@ hr {
   display: none;
 }
 
+/* Music History */
+.music-history {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 12px;
+}
+
+.music-history.hidden {
+  display: none;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.music-history-item {
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.music-history-item audio {
+  width: 100%;
+  height: 30px;
+  margin-bottom: 4px;
+}
+
+.music-history-item .music-info {
+  font-size: 11px;
+  color: #666;
+}
+
 /* Buttons */
 .btn {
   padding: 10px 16px;
