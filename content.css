@@ -30,6 +30,11 @@
   animation: none;
 }
 
+/* When drawer is open, hide button but keep drawer visible */
+#askit-float-btn.drawer-open {
+  display: none;
+}
+
 @keyframes pulse {
   0%, 100% { box-shadow: 0 4px 20px rgba(108, 92, 231, 0.5); }
   50% { box-shadow: 0 4px 30px rgba(108, 92, 231, 0.8); }

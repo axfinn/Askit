@@ -128,7 +128,7 @@
   function toggleDrawer() {
     isDrawerOpen = !isDrawerOpen;
     drawer.classList.toggle('active', isDrawerOpen);
-    button.classList.toggle('active', isDrawerOpen);
+    button.classList.toggle('drawer-open', isDrawerOpen);
 
     if (isDrawerOpen) {
       // Update page title in tools tab
@@ -380,10 +380,12 @@
     return true;
   });
 
-  // Close drawer when clicking outside
-  document.addEventListener('click', (e) => {
-    if (isDrawerOpen && !drawer.contains(e.target) && !button.contains(e.target)) {
-      closeDrawer();
-    }
-  });
+  // Close drawer when clicking outside (optional - drawer now stays open)
+  // document.addEventListener('click', (e) => {
+  //   if (isDrawerOpen && !drawer.contains(e.target) && !button.contains(e.target)) {
+  //     closeDrawer();
+  //   }
+  // });
+
+  // Drawer stays open - user controls it manually
 })();
