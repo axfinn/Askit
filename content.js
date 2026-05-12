@@ -143,22 +143,23 @@
   // Take screenshot
   async function takeScreenshot() {
     try {
-      // Use chrome.tabs.captureVisibleTab if available
-      const dataUrl = await new Promise((resolve, reject) => {
-        chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(dataUrl);
-          }
-        });
-      });
+      // Request screenshot from background script
+      chrome.runtime.sendMessage({ action: 'captureScreenshot' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Screenshot failed:', chrome.runtime.lastError);
+          alert('Screenshot failed. Please check permissions.');
+          return;
+        }
 
-      // Send to popup
-      chrome.runtime.sendMessage({
-        action: 'pageAction',
-        type: 'screenshot',
-        imageData: dataUrl
+        if (response && response.imageData) {
+          chrome.runtime.sendMessage({
+            action: 'pageAction',
+            type: 'screenshot',
+            imageData: response.imageData
+          });
+        } else {
+          alert('Screenshot failed. Please check permissions.');
+        }
       });
     } catch (error) {
       console.error('Screenshot failed:', error);

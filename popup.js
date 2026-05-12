@@ -568,55 +568,26 @@ async function generateMusicWithLyrics() {
   resultDiv.innerHTML = '';
 
   try {
-    // Try MiniMax music endpoint
-    const response = await fetch(`${settings.apiBase}/music`, {
+    const response = await fetch(`${settings.apiBase}/music_generation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${settings.apiKey}`
       },
       body: JSON.stringify({
-        model: 'music-01',
+        model: 'music-2.6',
         prompt: musicPrompt,
-        duration: parseInt(duration)
+        lyrics: lyrics || undefined,
+        audio_setting: {
+          format: 'mp3'
+        }
       })
     });
 
-    if (!response.ok) {
-      // Try alternative endpoint
-      const altResponse = await fetch(`${settings.apiBase}/audio/music`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'music-01',
-          prompt: musicPrompt,
-          duration: parseInt(duration)
-        })
-      });
-
-      if (!altResponse.ok) {
-        throw new Error(`API error: ${altResponse.status}. Music API may not be available on your plan.`);
-      }
-
-      const altData = await altResponse.json();
-      const musicUrl = altData.data?.[0]?.url;
-
-      if (musicUrl) {
-        resultDiv.innerHTML = `
-          <audio controls src="${musicUrl}"></audio>
-          <a href="${musicUrl}" target="_blank" class="btn secondary">Open Music</a>
-        `;
-      } else {
-        resultDiv.innerHTML = '<p class="error">No music URL in response</p>';
-      }
-      return;
-    }
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
 
     const data = await response.json();
-    const musicUrl = data.data?.[0]?.url;
+    const musicUrl = data.data?.audio;
 
     if (musicUrl) {
       resultDiv.innerHTML = `
