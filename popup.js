@@ -697,7 +697,7 @@ function showToast(text) {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// Listen for context menu and page actions
+// Listen for actions from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'showSelection' && request.text) {
     document.getElementById('chatInput').value = request.text;
@@ -705,34 +705,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     document.querySelector('[data-tab="chat"]').click();
   }
 
-  if (request.action === 'notifyPageAction' || request.action === 'pageAction') {
-    handlePageAction(request);
+  if (request.action === 'notifyAction' || request.action === 'doAction') {
+    handleAction(request);
   }
 });
 
-// Handle page actions from content script
-async function handlePageAction(request) {
-  const { type, title, content, imageData } = request;
+// Handle actions from content script
+async function handleAction(request) {
+  const { type, content, title, pageContent, imageData } = request;
 
   // Switch to chat tab
   document.querySelector('[data-tab="chat"]').click();
 
   switch(type) {
     case 'summarize':
-      await summarizePageContent(title, content);
+      await summarizePageContent(title || 'Page', pageContent || content);
       break;
     case 'translate':
-      await translatePageContent(title, content);
+      await translatePageContent(title || 'Page', pageContent || content);
       break;
     case 'chat':
-      await chatAboutPageContent(title, content);
+      if (content && !pageContent) {
+        addMessage('user', content);
+        showToast('Ask anything...');
+      } else {
+        await chatAboutPageContent(title || 'Page', pageContent || content);
+      }
+      break;
+    case 'explain':
+      addMessage('user', `💡 Explain: ${content}`);
+      showToast('Explaining...');
       break;
     case 'extract':
       addMessage('user', content);
-      showToast('Text extracted! Edit and send your message.');
+      showToast('Text extracted!');
       break;
     case 'screenshot':
       await analyzeScreenshot(imageData);
+      break;
+    case 'rewrite':
+    case 'paraphrase':
+      addMessage('user', `🔄 ${type}: ${content}`);
+      showToast('Processing...');
       break;
   }
 }

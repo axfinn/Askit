@@ -1,95 +1,80 @@
-// Background service worker for AskIt
+// AskIt Background Service Worker
 
-// Store for pending page actions when popup is not open
-let pendingPageAction = null;
+let pendingAction = null;
 
 // Create context menu on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'askWithAskIt',
-    title: 'Ask with AskIt',
+    title: '✦ Ask with AskIt',
     contexts: ['selection']
   });
+
+  chrome.action.setBadgeText({ text: 'AI' });
 });
 
-// Handle messages from content script and popup
+// Handle messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // From content script: do action (summarize, translate, etc.)
+  if (request.action === 'doAction') {
+    pendingAction = request;
+
+    // Try to notify popup
+    chrome.runtime.sendMessage({
+      action: 'notifyAction',
+      ...request
+    }).catch(() => {
+      // Popup not open - will get pending when opened
+    });
+    return true;
+  }
+
+  // From popup: get pending action
+  if (request.action === 'getPendingAction') {
+    sendResponse(pendingAction);
+    pendingAction = null;
+    return true;
+  }
+
+  // From popup: clear pending
+  if (request.action === 'clearPending') {
+    pendingAction = null;
+    return true;
+  }
+
   // From content script: capture screenshot
   if (request.action === 'captureScreenshot') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0] && tabs[0].id !== chrome.tabs.TAB_ID_NONE) {
         chrome.tabs.captureVisibleTab(tabs[0].windowId, { format: 'png' }, (dataUrl) => {
-          if (chrome.runtime.lastError) {
-            console.error('Screenshot error:', chrome.runtime.lastError);
-            sendResponse({ error: chrome.runtime.lastError.message });
-          } else {
-            sendResponse({ imageData: dataUrl });
-          }
+          sendResponse({ imageData: dataUrl || null, error: chrome.runtime.lastError?.message });
         });
       } else {
-        sendResponse({ error: 'Cannot capture: no active tab' });
+        sendResponse({ error: 'No active tab' });
       }
     });
-    return true;
-  }
-
-  // From content script: page action (summarize, translate, screenshot, chat, extract)
-  if (request.action === 'pageAction') {
-    pendingPageAction = request;
-
-    // Send to popup if it's open, otherwise store for later
-    chrome.runtime.sendMessage({
-      action: 'notifyPageAction',
-      ...request
-    }).catch(() => {
-      // Popup not open - will retrieve when popup opens
-    });
-    return true;
-  }
-
-  // From popup: get pending page action
-  if (request.action === 'getPendingPageAction') {
-    sendResponse(pendingPageAction);
-    pendingPageAction = null;
-    return true;
-  }
-
-  // From popup: clear pending action
-  if (request.action === 'clearPendingPageAction') {
-    pendingPageAction = null;
-    return true;
-  }
-
-  // From content script: context menu selection
-  if (request.action === 'contextMenuSelection') {
-    pendingPageAction = {
-      action: 'pageAction',
-      type: 'extract',
-      content: request.text
-    };
     return true;
   }
 
   return true;
 });
 
-// Handle context menu click
+// Context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'askWithAskIt' && info.selectionText) {
-    // Send selected text to popup
-    pendingPageAction = {
-      action: 'pageAction',
-      type: 'extract',
-      content: info.selectionText
+    pendingAction = {
+      action: 'doAction',
+      type: 'explain',
+      content: info.selectionText,
+      title: tab.title || 'Selection'
     };
 
     chrome.runtime.sendMessage({
-      action: 'notifyPageAction',
-      type: 'extract',
-      content: info.selectionText
-    }).catch(() => {
-      // Popup not open
-    });
+      action: 'notifyAction',
+      type: 'explain',
+      content: info.selectionText,
+      title: tab.title || 'Selection'
+    }).catch(() => {});
   }
 });
 
