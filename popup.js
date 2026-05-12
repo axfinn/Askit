@@ -58,7 +58,45 @@ document.addEventListener('DOMContentLoaded', () => {
   initVision();
   initTTS();
   initMusic();
+
+  // Check for pending page actions from content script
+  checkPendingPageAction();
 });
+
+function checkPendingPageAction() {
+  chrome.runtime.sendMessage({ action: 'getPendingPageAction' }, (pendingAction) => {
+    if (pendingAction && pendingAction.action === 'pageAction') {
+      handlePageAction(pendingAction);
+    }
+  });
+}
+
+// ==================== HISTORY MANAGEMENT ====================
+function loadHistory() {
+  chrome.storage.local.get(['conversation_history'], (result) => {
+    if (result.conversation_history) {
+      conversationHistory = result.conversation_history;
+      if (conversationHistory.length > 0) {
+        welcome.style.display = 'none';
+        conversationHistory.forEach(msg => addMessage(msg.role, msg.content));
+      }
+    }
+  });
+}
+
+function saveHistory() {
+  chrome.storage.local.set({ conversation_history: conversationHistory });
+}
+
+function clearHistory() {
+  if (confirm('Delete all chat history?')) {
+    conversationHistory = [];
+    chrome.storage.local.remove(['conversation_history']);
+    messagesContainer.innerHTML = '';
+    welcome.style.display = 'block';
+    showToast('History deleted');
+  }
+}
 
 // ==================== SETTINGS ====================
 function loadSettings() {
@@ -149,6 +187,7 @@ function initTabs() {
 function initChat() {
   const chatInput = document.getElementById('chatInput');
   const sendBtn = document.querySelector('#chatTab .send');
+  const clearBtn = document.getElementById('clearHistory');
 
   sendBtn.addEventListener('click', sendChatMessage);
   chatInput.addEventListener('keydown', (e) => {
@@ -158,15 +197,10 @@ function initChat() {
     }
   });
 
-  chrome.storage.session.get(['conversation_history'], (result) => {
-    if (result.conversation_history) {
-      conversationHistory = result.conversation_history;
-      if (conversationHistory.length > 0) {
-        welcome.style.display = 'none';
-        conversationHistory.forEach(msg => addMessage(msg.role, msg.content));
-      }
-    }
-  });
+  clearBtn.addEventListener('click', clearHistory);
+
+  // Load persistent chat history
+  loadHistory();
 }
 
 async function sendChatMessage() {
@@ -534,7 +568,8 @@ async function generateMusicWithLyrics() {
   resultDiv.innerHTML = '';
 
   try {
-    const response = await fetch(`${settings.apiBase}/audio/music`, {
+    // Try MiniMax music endpoint
+    const response = await fetch(`${settings.apiBase}/music`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -547,7 +582,38 @@ async function generateMusicWithLyrics() {
       })
     });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      // Try alternative endpoint
+      const altResponse = await fetch(`${settings.apiBase}/audio/music`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'music-01',
+          prompt: musicPrompt,
+          duration: parseInt(duration)
+        })
+      });
+
+      if (!altResponse.ok) {
+        throw new Error(`API error: ${altResponse.status}. Music API may not be available on your plan.`);
+      }
+
+      const altData = await altResponse.json();
+      const musicUrl = altData.data?.[0]?.url;
+
+      if (musicUrl) {
+        resultDiv.innerHTML = `
+          <audio controls src="${musicUrl}"></audio>
+          <a href="${musicUrl}" target="_blank" class="btn secondary">Open Music</a>
+        `;
+      } else {
+        resultDiv.innerHTML = '<p class="error">No music URL in response</p>';
+      }
+      return;
+    }
 
     const data = await response.json();
     const musicUrl = data.data?.[0]?.url;
@@ -579,8 +645,8 @@ function addMessage(role, content) {
 
 function addToHistory(role, content) {
   conversationHistory.push({ role, content });
-  if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
-  chrome.storage.session.set({ conversation_history: conversationHistory });
+  if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(-50);
+  saveHistory();
 }
 
 function getConversationHistory() {
