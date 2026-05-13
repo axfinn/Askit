@@ -25,9 +25,9 @@ export function extractPageContent(): string {
   const extracted = extractSmart()
   if (!extracted.content) return ''
 
-  let result = `# ${extracted.title}\n\n`
+  let result = `# ${extracted.title}\n\nURL: ${extracted.url}\n\n`
   result += extracted.content
-  return result.substring(0, 6000)
+  return result.substring(0, 15000)
 }
 
 function extractSmart(): ExtractedContent {
@@ -51,6 +51,8 @@ function extractBySite(url: string): string | null {
   if (url.includes('youtube.com/watch')) return extractYouTube()
   if (url.includes('github.com') && !url.includes('/issues') && !url.includes('/pull')) return extractGitHub()
   if (url.includes('zhihu.com')) return extractZhihu()
+  if (url.includes('weibo.com') || url.includes('weibo.cn')) return extractWeibo()
+  if (url.includes('twitter.com') || url.includes('x.com')) return extractTwitter()
   return null
 }
 
@@ -98,6 +100,50 @@ function extractZhihu(): string {
   return ''
 }
 
+function extractWeibo(): string {
+  const parts: string[] = []
+
+  // Get all visible feed items / tweet cards
+  const feedItems = document.querySelectorAll('[class*="Feed_body"], [class*="wbpro-feed"], .card-wrap .card, [class*="detail_wbtext"], [node-type="feed_content"], .WB_detail, .Feed_body_3R0rO')
+  if (feedItems.length > 0) {
+    feedItems.forEach((item, i) => {
+      const text = (item as HTMLElement).innerText?.trim()
+      if (text && text.length > 10) {
+        if (i > 0) parts.push('\n---\n')
+        parts.push(text)
+      }
+    })
+  }
+
+  // Fallback: grab main content area
+  if (!parts.length) {
+    const main = document.querySelector('[class*="Main_full"], .WB_frame_c, main, [class*="detail"]') as HTMLElement
+    if (main) parts.push(main.innerText?.trim() || '')
+  }
+
+  // Comments
+  const comments = Array.from(document.querySelectorAll('[class*="comment_text"], [node-type="comment_content"], .list_box .list_li .WB_text'))
+    .slice(0, 15)
+    .map(el => `- ${(el as HTMLElement).innerText?.trim()}`)
+    .filter(t => t.length > 5)
+  if (comments.length) parts.push(`\n## 评论\n${comments.join('\n')}`)
+
+  return parts.join('\n')
+}
+
+function extractTwitter(): string {
+  const parts: string[] = []
+  const tweets = document.querySelectorAll('[data-testid="tweetText"], article [lang]')
+  tweets.forEach((el, i) => {
+    const text = (el as HTMLElement).innerText?.trim()
+    if (text && text.length > 5) {
+      if (i > 0) parts.push('\n---\n')
+      parts.push(text)
+    }
+  })
+  return parts.join('\n')
+}
+
 function extractBySemanticTags(): string {
   for (const selector of CONTENT_SELECTORS) {
     const el = document.querySelector(selector) as HTMLElement | null
@@ -110,30 +156,40 @@ function extractBySemanticTags(): string {
 }
 
 function extractByTextDensity(): string {
-  const candidates = document.querySelectorAll('div, section')
-  let best: HTMLElement | null = null
-  let bestScore = 0
+  // Collect all substantial text blocks instead of just the single best one
+  const candidates = document.querySelectorAll('div, section, article, main')
+  const blocks: { el: HTMLElement; score: number }[] = []
 
   candidates.forEach(el => {
     const htmlEl = el as HTMLElement
-    if (htmlEl.closest('nav, footer, header, aside')) return
-    if (htmlEl.offsetHeight < 100) return
+    if (htmlEl.closest('nav, footer, header, aside, [class*="ad"]')) return
+    if (htmlEl.offsetHeight < 50) return
+    // Skip if a parent is already collected
+    if (blocks.some(b => b.el.contains(htmlEl))) return
 
     const text = htmlEl.innerText || ''
     const textLen = text.length
+    if (textLen < 100) return
     const linkText = Array.from(htmlEl.querySelectorAll('a'))
       .reduce((sum, a) => sum + (a.textContent?.length || 0), 0)
     const density = textLen > 0 ? (textLen - linkText) / textLen : 0
     const score = (textLen - linkText) * density
 
-    if (score > bestScore && textLen > 200) {
-      bestScore = score
-      best = htmlEl
+    if (score > 500) {
+      // Remove children that are already in blocks
+      const filtered = blocks.filter(b => !htmlEl.contains(b.el))
+      filtered.push({ el: htmlEl, score })
+      blocks.length = 0
+      blocks.push(...filtered)
     }
   })
 
-  if (best) return domToMarkdown(best)
-  return document.body.innerText?.replace(/\s+/g, ' ').trim().substring(0, 4000) || ''
+  blocks.sort((a, b) => b.score - a.score)
+  const best = blocks[0]
+  if (best) return domToMarkdown(best.el)
+
+  // Ultimate fallback: full page text
+  return document.body.innerText?.replace(/\s+/g, ' ').trim().substring(0, 12000) || ''
 }
 
 function domToMarkdown(root: HTMLElement): string {
