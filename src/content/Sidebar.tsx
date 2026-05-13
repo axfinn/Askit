@@ -192,9 +192,9 @@ export function Sidebar() {
     setStreaming(true)
 
     const pageContext = extractPageContent()
-    let systemPrompt = 'You are a helpful AI assistant. Respond in the same language as the user.'
+    let systemPrompt = '你是一个有帮助的AI助手。用与用户相同的语言回答。'
     if (pageContext) {
-      systemPrompt = `You are a helpful AI assistant. The user is browsing: "${document.title}" (${location.href}).\n\nPage content (excerpt):\n${pageContext.substring(0, 3000)}\n\nUse this context to answer questions. Respond in the same language as the user.`
+      systemPrompt = `你是一个有帮助的AI助手。用户正在浏览: "${document.title}" (${location.href})。\n\n当前页面完整内容:\n${pageContext}\n\n基于以上页面内容回答用户的问题。用与用户相同的语言回答。`
     }
 
     const currentMessages = useStore.getState().messages
@@ -278,9 +278,9 @@ ${context}
 
     if (['summarize', 'translate', 'extract'].includes(featureId)) {
       const prompts: Record<string, string> = {
-        summarize: `请用中文总结以下页面内容的要点（3-5条）：\n\n${pageContent}`,
-        translate: `请将以下页面内容翻译成中文（如果已是中文则翻译为英文）：\n\n${pageContent?.substring(0, 4000)}`,
-        extract: `请提取以下页面内容的大纲结构：\n\n${pageContent}`,
+        summarize: `请用中文总结以下页面内容的要点（5-8条），涵盖所有关键信息：\n\n${pageContent}`,
+        translate: `请将以下页面内容翻译成中文（如果已是中文则翻译为英文）：\n\n${pageContent}`,
+        extract: `请提取以下页面内容的完整大纲结构，不要遗漏：\n\n${pageContent}`,
       }
       const labels: Record<string, string> = { summarize: '总结页面', translate: '翻译页面', extract: '提取大纲' }
       setActiveTab('chat')
@@ -672,15 +672,15 @@ ${context}
               addMessage({ id: crypto.randomUUID(), role: 'user', content: '📺 总结这个视频', timestamp: Date.now() })
               extractYouTubeTranscript().then(transcript => {
                 if (transcript) {
-                  doStreamChat(`请用中文总结以下视频内容的要点（5-8条）：\n\n${transcript.substring(0, 6000)}`)
+                  doStreamChat(`请用中文总结以下视频内容的要点（5-8条），涵盖所有关键信息：\n\n${transcript.substring(0, 12000)}`)
                 } else {
-                  doStreamChat(`请根据页面标题和描述总结这个视频的内容：${document.title}`)
+                  doStreamChat(`请根据页面内容总结这个视频：${document.title}\n\n${extractPageContent()}`)
                 }
               })
             } else if (action === 'pdf-summary') {
               addMessage({ id: crypto.randomUUID(), role: 'user', content: '📄 总结这个 PDF', timestamp: Date.now() })
               const content = extractPageContent()
-              doStreamChat(`请总结以下 PDF 文档的要点：\n\n${content?.substring(0, 6000)}`)
+              doStreamChat(`请总结以下 PDF 文档的要点，不要遗漏关键信息：\n\n${content}`)
             }
           }} />
 

@@ -113,7 +113,7 @@ export function SelectionPopup() {
       await streamChat(
         settings,
         [
-          { role: 'system', content: 'You are a helpful assistant. Be concise.' },
+          { role: 'system', content: `你是一个简洁有帮助的助手。用户在页面"${document.title}"上选中了一段文字并请求操作。直接给出结果，不要废话。` },
           { role: 'user', content: prompts[actionId] ?? selectedText },
         ],
         {
