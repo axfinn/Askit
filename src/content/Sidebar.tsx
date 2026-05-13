@@ -14,24 +14,32 @@ import type { Message, PageType } from '@/shared/types'
 
 type TabId = 'chat' | 'write' | 'tools'
 
-const TOOLS = [
-  { id: 'summarize', icon: '📄', label: '总结页面', desc: '提取要点' },
-  { id: 'translate', icon: '🌐', label: '翻译页面', desc: '中英互译' },
-  { id: 'extract', icon: '📝', label: '提取大纲', desc: '结构化内容' },
-  { id: 'image-gen', icon: '🎨', label: '图片生成', desc: 'AI 绘画' },
-  { id: 'image-recognize', icon: '👁️', label: '图片识别', desc: '看图说话' },
-  { id: 'tts', icon: '🔊', label: '语音合成', desc: 'TTS 朗读' },
-  { id: 'music', icon: '🎵', label: '音乐生成', desc: 'AI 作曲' },
-  { id: 'music-cover', icon: '🎤', label: 'AI 翻唱', desc: '歌曲翻唱' },
-  { id: 'page-translate', icon: '🔤', label: '全页翻译', desc: '页面内翻译' },
-  { id: 'screenshot', icon: '📸', label: '截图提问', desc: '视觉分析' },
-  { id: 'extract-images', icon: '🖼️', label: '提取图片', desc: '批量图片URL' },
-  { id: 'extract-comments', icon: '💬', label: '提取评论', desc: '批量复制' },
-  { id: 'extract-links', icon: '🔗', label: '提取链接', desc: '页面所有链接' },
-  { id: 'share-chat', icon: '📤', label: '分享对话', desc: '生成分享链接' },
-  { id: 'share-page', icon: '🌍', label: '分享页面', desc: '页面内容分享' },
-  { id: 'analyze-paste', icon: '📋', label: '分析粘贴板', desc: '导入并分析' },
-  { id: 'short-url', icon: '🔗', label: '页面短链', desc: '生成短链分享' },
+const TOOL_GROUPS = [
+  { title: '页面', tools: [
+    { id: 'summarize', icon: '📄', label: '总结' },
+    { id: 'translate', icon: '🌐', label: '翻译' },
+    { id: 'extract', icon: '📝', label: '大纲' },
+    { id: 'page-translate', icon: '🔤', label: '全页翻译' },
+    { id: 'screenshot', icon: '📸', label: '截图提问' },
+  ]},
+  { title: 'AI 创作', tools: [
+    { id: 'image-gen', icon: '🎨', label: '绘画' },
+    { id: 'image-recognize', icon: '👁️', label: '识图' },
+    { id: 'tts', icon: '🔊', label: '朗读' },
+    { id: 'music', icon: '🎵', label: '作曲' },
+    { id: 'music-cover', icon: '🎤', label: '翻唱' },
+  ]},
+  { title: '提取', tools: [
+    { id: 'extract-images', icon: '🖼️', label: '图片' },
+    { id: 'extract-comments', icon: '💬', label: '评论' },
+    { id: 'extract-links', icon: '🔗', label: '链接' },
+  ]},
+  { title: '分享', tools: [
+    { id: 'share-chat', icon: '📤', label: '分享对话' },
+    { id: 'share-page', icon: '🌍', label: '分享页面' },
+    { id: 'short-url', icon: '🔗', label: '短链' },
+    { id: 'analyze-paste', icon: '📋', label: '分析粘贴板' },
+  ]},
 ] as const
 
 export function Sidebar() {
@@ -652,13 +660,19 @@ ${context}
       {activeTab === 'write' ? (
         <WritingTemplates onSelect={handleTemplateSelect} />
       ) : activeTab === 'tools' ? (
-        <div className="askit-features">
-          {TOOLS.map(f => (
-            <button key={f.id} className="askit-feature-card" onClick={() => handleFeature(f.id)}>
-              <div className="askit-feature-card-icon">{f.icon}</div>
-              <div className="askit-feature-card-label">{f.label}</div>
-              <div className="askit-feature-card-desc">{f.desc}</div>
-            </button>
+        <div className="askit-features-scroll">
+          {TOOL_GROUPS.map(group => (
+            <div key={group.title} className="askit-tool-group">
+              <div className="askit-tool-group-title">{group.title}</div>
+              <div className="askit-features">
+                {group.tools.map(f => (
+                  <button key={f.id} className="askit-feature-card" onClick={() => handleFeature(f.id)}>
+                    <div className="askit-feature-card-icon">{f.icon}</div>
+                    <div className="askit-feature-card-label">{f.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (

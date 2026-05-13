@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/shared/store'
 import { streamChat } from '@/shared/api'
 import { renderMarkdown } from '@/shared/markdown'
 import { detectPageType, getSearchQuery } from '../utils/detectPage'
+
+interface Message { role: 'user' | 'assistant' | 'system'; content: string }
 
 export function SearchEnhancement() {
   const { settings } = useStore()
@@ -11,40 +13,56 @@ export function SearchEnhancement() {
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [followUp, setFollowUp] = useState('')
+  const [history, setHistory] = useState<Message[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (detectPageType() !== 'search') return
     const q = getSearchQuery()
     if (q && q.length > 2) {
       setQuery(q)
-      doSearch(q)
+      doSearch(q, [])
     }
   }, [])
 
-  async function doSearch(q: string) {
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+  }, [result])
+
+  async function doSearch(q: string, prevHistory: Message[]) {
     if (!settings.apiKey) return
     setLoading(true)
     setResult('')
 
+    const messages: Message[] = [
+      { role: 'system', content: 'You are a helpful AI assistant. Provide a concise, informative answer to the search query. Use markdown formatting. Respond in the same language as the query.' },
+      ...prevHistory,
+      { role: 'user', content: q },
+    ]
+
     let fullText = ''
     try {
-      await streamChat(
-        settings,
-        [
-          { role: 'system', content: 'You are a helpful AI assistant. Provide a concise, informative answer to the search query. Use markdown formatting. Respond in the same language as the query.' },
-          { role: 'user', content: q },
-        ],
-        {
-          onToken: (token) => { fullText += token; setResult(fullText) },
-          onDone: () => {},
-          onError: (err) => setResult(`Error: ${err.message}`),
-        }
-      )
+      await streamChat(settings, messages, {
+        onToken: (token) => { fullText += token; setResult(fullText) },
+        onDone: () => {
+          setHistory([...prevHistory, { role: 'user', content: q }, { role: 'assistant', content: fullText }])
+        },
+        onError: (err) => setResult(`Error: ${err.message}`),
+      })
     } catch (err: any) {
       if (err.name !== 'AbortError') setResult(`Error: ${err.message}`)
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleFollowUp() {
+    const q = followUp.trim()
+    if (!q || loading) return
+    setFollowUp('')
+    doSearch(q, history)
   }
 
   if (detectPageType() !== 'search' || dismissed || !query) return null
@@ -72,16 +90,32 @@ export function SearchEnhancement() {
         </div>
       </div>
       {!collapsed && (
-        <div className="askit-search-panel-body">
-          {result ? (
-            <div className="askit-search-panel-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
-          ) : loading ? (
-            <div className="askit-search-panel-loading">
-              <div className="spinner" />
-              <span>正在思考...</span>
-            </div>
-          ) : null}
-        </div>
+        <>
+          <div className="askit-search-panel-body" ref={bodyRef}>
+            {result ? (
+              <div className="askit-search-panel-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
+            ) : loading ? (
+              <div className="askit-search-panel-loading">
+                <div className="spinner" />
+                <span>正在思考...</span>
+              </div>
+            ) : null}
+          </div>
+          <div className="askit-search-panel-input">
+            <input
+              ref={inputRef}
+              type="text"
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleFollowUp() } }}
+              placeholder="追问..."
+              disabled={loading}
+            />
+            <button onClick={handleFollowUp} disabled={loading || !followUp.trim()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
