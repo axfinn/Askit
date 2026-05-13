@@ -21,11 +21,77 @@ export function extractPageContent(): string {
   // Site-specific structured data as prefix (if available)
   const structured = extractStructured(url)
 
+  // Extract page images and links for AI access
+  const images = extractPageImages()
+  const links = extractPageLinks()
+
   let result = `# ${title}\n\nURL: ${url}\n\n`
   if (structured) result += structured + '\n\n---\n\n'
   result += fullText
+  if (images) result += `\n\n---\n\n## 页面图片\n${images}`
+  if (links) result += `\n\n## 页面链接\n${links}`
 
-  return result.substring(0, 15000)
+  return result.substring(0, 18000)
+}
+
+function extractPageImages(): string {
+  const seen = new Set<string>()
+  const results: string[] = []
+
+  document.querySelectorAll('img, [data-src], [data-original], source[srcset], video[poster]').forEach(el => {
+    const urls = [
+      el.getAttribute('src'),
+      el.getAttribute('data-src'),
+      el.getAttribute('data-original'),
+      el.getAttribute('data-lazy-src'),
+      el.getAttribute('poster'),
+    ].filter(Boolean) as string[]
+
+    // srcset
+    const srcset = el.getAttribute('srcset')
+    if (srcset) {
+      srcset.split(',').forEach(s => {
+        const u = s.trim().split(/\s+/)[0]
+        if (u) urls.push(u)
+      })
+    }
+
+    for (let u of urls) {
+      if (u.startsWith('//')) u = 'https:' + u
+      if (!u.startsWith('http')) continue
+      if (seen.has(u)) continue
+      // Skip tiny icons/tracking pixels
+      const w = parseInt(el.getAttribute('width') || '0')
+      const h = parseInt(el.getAttribute('height') || '0')
+      if ((w > 0 && w < 50) || (h > 0 && h < 50)) continue
+      if (u.includes('1x1') || u.includes('pixel') || u.includes('blank')) continue
+      seen.add(u)
+      const alt = el.getAttribute('alt') || el.getAttribute('title') || ''
+      results.push(alt ? `${alt}: ${u}` : u)
+    }
+  })
+
+  return results.length > 0 ? results.slice(0, 80).join('\n') : ''
+}
+
+function extractPageLinks(): string {
+  const seen = new Set<string>()
+  const results: string[] = []
+
+  document.querySelectorAll('a[href]').forEach(el => {
+    const href = el.getAttribute('href') || ''
+    let url = href
+    if (url.startsWith('//')) url = 'https:' + url
+    else if (url.startsWith('/')) url = location.origin + url
+    if (!url.startsWith('http')) return
+    if (seen.has(url)) return
+    seen.add(url)
+    const text = el.textContent?.trim().substring(0, 80) || ''
+    if (!text) return
+    results.push(`${text}: ${url}`)
+  })
+
+  return results.length > 0 ? results.slice(0, 50).join('\n') : ''
 }
 
 function extractStructured(url: string): string | null {
