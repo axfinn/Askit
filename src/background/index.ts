@@ -23,14 +23,17 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'ASKIT_CAPTURE_SCREENSHOT') {
-    const windowId = sender.tab?.windowId ?? chrome.windows.WINDOW_ID_CURRENT
-    chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        sendResponse({ imageData: null, error: chrome.runtime.lastError.message })
-      } else {
-        sendResponse({ imageData: dataUrl ?? null })
-      }
-    })
+    try {
+      chrome.tabs.captureVisibleTab({ format: 'png' }, (dataUrl) => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ imageData: null, error: chrome.runtime.lastError.message })
+        } else {
+          sendResponse({ imageData: dataUrl ?? null })
+        }
+      })
+    } catch (e: any) {
+      sendResponse({ imageData: null, error: e.message })
+    }
     return true
   }
 

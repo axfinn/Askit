@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useStore } from '@/shared/store'
 import { streamChat, chatCompletion, generateImage, textToSpeech, generateMusic, generateLyrics, musicCoverPreprocess, generateMusicCover, understandImage } from '@/shared/api'
+import { createPaste, getPaste, formatConversationAsMarkdown, createShortUrl } from '@/shared/paste'
 import { ChatMessage } from './components/ChatMessage'
 import { ModelSelector } from './components/ModelSelector'
 import { HistoryPanel } from './components/HistoryPanel'
@@ -27,6 +28,10 @@ const TOOLS = [
   { id: 'extract-images', icon: '🖼️', label: '提取图片', desc: '批量图片URL' },
   { id: 'extract-comments', icon: '💬', label: '提取评论', desc: '批量复制' },
   { id: 'extract-links', icon: '🔗', label: '提取链接', desc: '页面所有链接' },
+  { id: 'share-chat', icon: '📤', label: '分享对话', desc: '生成分享链接' },
+  { id: 'share-page', icon: '🌍', label: '分享页面', desc: '页面内容分享' },
+  { id: 'analyze-paste', icon: '📋', label: '分析粘贴板', desc: '导入并分析' },
+  { id: 'short-url', icon: '🔗', label: '页面短链', desc: '生成短链分享' },
 ] as const
 
 export function Sidebar() {
@@ -38,31 +43,51 @@ export function Sidebar() {
   const [pageType, setPageType] = useState<PageType>('normal')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [pendingImage, setPendingImage] = useState<string | null>(null)
+  const [sidebarWidth, setSidebarWidth] = useState(420)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const resizingRef = useRef(false)
 
   useEffect(() => { loadSettings() }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { if (sidebarOpen) inputRef.current?.focus() }, [sidebarOpen])
   useEffect(() => { setPageType(detectPageType()) }, [sidebarOpen])
 
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    resizingRef.current = true
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return
+      const newWidth = Math.min(Math.max(startWidth + (startX - ev.clientX), 320), window.innerWidth * 0.8)
+      setSidebarWidth(newWidth)
+    }
+    const onUp = () => {
+      resizingRef.current = false
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [sidebarWidth])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.altKey || e.metaKey) && e.key === 'j') {
         e.preventDefault()
-        setSidebarOpen(!sidebarOpen)
+        toggleSidebar()
       }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [sidebarOpen])
+  }, [])
 
   useEffect(() => {
     const listener = (msg: any) => {
       try {
-        if (msg.type === 'ASKIT_TOGGLE_SIDEBAR') toggleSidebar()
         if (msg.type === 'ASKIT_ACTION') {
           setSidebarOpen(true)
           setActiveTab('chat')
@@ -292,6 +317,28 @@ ${context}
       return
     }
 
+    if (featureId === 'share-chat') {
+      doShareChat()
+      return
+    }
+
+    if (featureId === 'share-page') {
+      doSharePage()
+      return
+    }
+
+    if (featureId === 'analyze-paste') {
+      setActiveTab('chat')
+      addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '📋 请输入粘贴板分享链接或 ID，我会获取内容并帮你分析', timestamp: Date.now() })
+      setPendingFeature('analyze-paste')
+      return
+    }
+
+    if (featureId === 'short-url') {
+      doShortUrl()
+      return
+    }
+
     setActiveTab('chat')
     const hints: Record<string, string> = {
       'image-gen': '🎨 请描述你想生成的图片，例如："一只在星空下奔跑的白色独角兽，梦幻风格"',
@@ -343,33 +390,21 @@ ${context}
     addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '📸 正在截取屏幕...', timestamp: Date.now() })
     setStreaming(true)
     try {
-      const hasPermission = await new Promise<boolean>((resolve) => {
-        try {
-          chrome.permissions.contains({ permissions: ['activeTab'], origins: ['<all_urls>'] }, resolve)
-        } catch { resolve(false) }
-      })
-      if (!hasPermission) {
-        const granted = await new Promise<boolean>((resolve) => {
-          try {
-            chrome.permissions.request({ permissions: ['activeTab'], origins: ['https://*/*', 'http://*/*'] }, resolve)
-          } catch { resolve(false) }
-        })
-        if (!granted) throw new Error('需要截图权限，请在弹出的对话框中允许')
-      }
       const response = await new Promise<any>((resolve) => {
         try {
           chrome.runtime.sendMessage({ type: 'ASKIT_CAPTURE_SCREENSHOT' }, resolve)
         } catch {
-          resolve({ error: 'Extension context invalidated' })
+          resolve({ error: '扩展已更新，请刷新页面后重试' })
         }
       })
-      if (!response?.imageData) throw new Error(response?.error || '截图失败')
-      updateLastMessage('🔍 正在分析截图内容...')
+      if (!response?.imageData) throw new Error(response?.error || '截图失败，请刷新页面后重试')
+      updateLastMessage(`📸 截图完成，正在分析...\n\n![截图](${response.imageData})`)
       const currentSettings = useStore.getState().settings
       const result = await understandImage(currentSettings, '请详细描述这张截图中的内容，包括文字、图片、布局等信息。如果有文字请提取出来。', response.imageData)
-      updateLastMessage(result)
+      updateLastMessage(`![截图](${response.imageData})\n\n${result}`)
     } catch (err: any) {
-      updateLastMessage(`截图分析失败: ${err.message}`)
+      const msg = err.message?.includes('invalidated') ? '扩展已更新，请刷新页面后重试（Ctrl+R）' : err.message
+      updateLastMessage(`截图分析失败: ${msg}`)
     } finally {
       setStreaming(false)
     }
@@ -429,6 +464,82 @@ ${context}
     addMessage({ id: crypto.randomUUID(), role: 'assistant', content, timestamp: Date.now() })
   }
 
+  async function doShareChat() {
+    setActiveTab('chat')
+    const currentMessages = useStore.getState().messages
+    if (currentMessages.length === 0) {
+      addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '当前没有对话记录可分享', timestamp: Date.now() })
+      return
+    }
+    addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '📤 正在生成分享链接...', timestamp: Date.now() })
+    try {
+      const title = `AskIt 对话 - ${currentMessages.find(m => m.role === 'user')?.content.substring(0, 30) || '未命名'}`
+      const md = formatConversationAsMarkdown(currentMessages.map(m => ({ role: m.role, content: m.content })), title)
+      const result = await createPaste({ content: md, title, language: 'markdown', expires_in: 72 })
+      updateLastMessage(`📤 对话已分享！\n\n🔗 链接: ${result.url}\n⏰ 有效期: 72小时\n👁️ 最大访问: ${result.max_views} 次\n\n可直接发送链接给他人查看对话记录。`)
+    } catch (err: any) {
+      updateLastMessage(`分享失败: ${err.message}`)
+    }
+  }
+
+  async function doSharePage() {
+    setActiveTab('chat')
+    const pageContent = extractPageContent()
+    if (!pageContent) {
+      addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '无法提取页面内容', timestamp: Date.now() })
+      return
+    }
+    addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '🌍 正在分享页面内容...', timestamp: Date.now() })
+    try {
+      const title = document.title || '页面分享'
+      const content = `# ${title}\n\n> 来源: ${location.href}\n> 时间: ${new Date().toLocaleString('zh-CN')}\n\n---\n\n${pageContent.substring(0, 50000)}`
+      const result = await createPaste({ content, title, language: 'markdown', expires_in: 72 })
+      updateLastMessage(`🌍 页面内容已分享！\n\n🔗 链接: ${result.url}\n📄 标题: ${title}\n⏰ 有效期: 72小时\n\n可发送链接给他人查看页面内容摘要。`)
+    } catch (err: any) {
+      updateLastMessage(`分享失败: ${err.message}`)
+    }
+  }
+
+  async function doShortUrl() {
+    setActiveTab('chat')
+    const url = location.href
+    addMessage({ id: crypto.randomUUID(), role: 'user', content: `🔗 生成短链: ${url}`, timestamp: Date.now() })
+    addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '🔗 正在生成短链...', timestamp: Date.now() })
+    try {
+      const result = await createShortUrl(url)
+      updateLastMessage(`🔗 短链已生成！\n\n**原始链接:**\n${url}\n\n**短链接:**\n${result.short_url}\n\n⏰ 有效期: 30天\n👆 最大点击: ${result.max_clicks} 次\n\n可直接复制短链发送给他人。`)
+    } catch (err: any) {
+      updateLastMessage(`短链生成失败: ${err.message}`)
+    }
+  }
+
+  async function doAnalyzePaste(input: string) {
+    const idMatch = input.match(/(?:paste\/)?([a-f0-9]{8})/) || input.match(/^([a-f0-9]{8})$/)
+    if (!idMatch) {
+      updateLastMessage('无法识别粘贴板 ID，请输入完整链接或 8 位 ID')
+      return
+    }
+    updateLastMessage('📋 正在获取粘贴板内容...')
+    try {
+      const paste = await getPaste(idMatch[1])
+      const preview = paste.content.substring(0, 500)
+      updateLastMessage(`📋 已获取粘贴板内容（${paste.content.length} 字符）\n\n**标题:** ${paste.title || '无'}\n**类型:** ${paste.language}\n\n**预览:**\n\`\`\`\n${preview}${paste.content.length > 500 ? '\n...' : ''}\n\`\`\`\n\n正在分析内容...`)
+      const currentSettings = useStore.getState().settings
+      const analysisPrompt = `请分析以下内容，给出摘要、关键信息和可能的后续建议：\n\n${paste.content.substring(0, 6000)}`
+      let fullText = ''
+      await streamChat(currentSettings, [{ role: 'user', content: analysisPrompt }], {
+        onToken: (token) => {
+          fullText += token
+          updateLastMessage(`📋 粘贴板内容分析：\n\n${fullText}`)
+        },
+        onDone: () => {},
+        onError: (err) => updateLastMessage(`分析失败: ${err.message}`),
+      })
+    } catch (err: any) {
+      updateLastMessage(`获取失败: ${err.message}`)
+    }
+  }
+
   async function handleFeatureInput(featureId: string, userInput: string) {
     const currentSettings = useStore.getState().settings
     addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '', timestamp: Date.now() })
@@ -467,6 +578,8 @@ ${context}
       } else if (featureId === 'image-recognize') {
         await doStreamChat(`请识别并描述这张图片的内容：${userInput}`)
         return
+      } else if (featureId === 'analyze-paste') {
+        await doAnalyzePaste(userInput)
       } else {
         updateLastMessage('该功能正在开发中...')
       }
@@ -496,7 +609,8 @@ ${context}
   if (!sidebarOpen) return null
 
   return (
-    <div className="askit-sidebar">
+    <div className="askit-sidebar" style={{ width: sidebarWidth }}>
+      <div className="askit-resize-handle" onMouseDown={handleResizeStart} />
       <HistoryPanel />
 
       {/* Header */}
@@ -510,6 +624,11 @@ ${context}
           <ModelSelector />
         </div>
         <div className="askit-header-right">
+          <button className="askit-header-btn" onClick={doShareChat} title="分享对话">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+          </button>
           <button className="askit-header-btn" onClick={() => { newConversation(); setPendingFeature(null) }} title="新对话">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 5v14M5 12h14"/>

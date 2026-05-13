@@ -133,6 +133,21 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+.askit-resize-handle {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 100000;
+  transition: background 0.15s;
+}
+.askit-resize-handle:hover,
+.askit-resize-handle:active {
+  background: rgba(124, 58, 237, 0.3);
+}
+
 /* Sidebar Header */
 .askit-header {
   display: flex;
