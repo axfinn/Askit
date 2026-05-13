@@ -9,11 +9,13 @@ interface PopupPosition {
 }
 
 const ACTIONS = [
-  { id: 'explain', icon: '💡', label: '解释' },
-  { id: 'translate', icon: '🌐', label: '翻译' },
-  { id: 'summarize', icon: '📄', label: '总结' },
-  { id: 'rewrite', icon: '✍️', label: '改写' },
-  { id: 'grammar', icon: '✓', label: '语法' },
+  { id: 'explain', label: '解释', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg> },
+  { id: 'translate', label: '翻译', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1"/><path d="M22 22l-5-10-5 10M14 18h6"/></svg> },
+  { id: 'summarize', label: '总结', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg> },
+  { id: 'rewrite', label: '改写', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
+  { id: 'grammar', label: '语法', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg> },
+  { id: 'improve', label: '润色', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> },
+  { id: 'actions', label: '要点', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
 ] as const
 
 export function SelectionPopup() {
@@ -99,6 +101,8 @@ export function SelectionPopup() {
       summarize: `请用一两句话总结以下内容：\n\n"${selectedText}"`,
       rewrite: `请改写以下内容，使其更加清晰流畅：\n\n"${selectedText}"`,
       grammar: `请检查以下文本的语法错误并给出修正：\n\n"${selectedText}"`,
+      improve: `请润色以下内容，使其更加专业优雅：\n\n"${selectedText}"`,
+      actions: `请从以下内容中提取关键要点和行动项：\n\n"${selectedText}"`,
     }
 
     const abort = new AbortController()

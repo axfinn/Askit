@@ -3,12 +3,14 @@
   "name": "AskIt - AI Assistant",
   "version": "4.0.0",
   "description": "MaxAI-style AI Assistant: Chat, Summarize, Translate, Image, TTS, Music",
-  "permissions": ["activeTab", "storage", "tabs", "contextMenus"],
+  "permissions": ["activeTab", "storage", "tabs", "contextMenus", "scripting"],
   "host_permissions": [
     "https://api.minimaxi.com/*",
+    "https://api.minimax.io/*",
     "https://api.deepseek.com/*",
     "https://api.openai.com/*",
-    "https://*/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "action": {
     "default_popup": "popup.html",

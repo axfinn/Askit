@@ -17,14 +17,16 @@ export function FloatingButton() {
   const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    chrome.storage.local.get(['askit_fab_pos', 'askit_fab_collapsed']).then(result => {
-      if (result.askit_fab_pos) setPosition(result.askit_fab_pos as Position)
-      if (result.askit_fab_collapsed) setCollapsed(true)
-    })
+    try {
+      chrome.storage.local.get(['askit_fab_pos', 'askit_fab_collapsed']).then(result => {
+        if (result.askit_fab_pos) setPosition(result.askit_fab_pos as Position)
+        if (result.askit_fab_collapsed) setCollapsed(true)
+      }).catch(() => {})
+    } catch {}
   }, [])
 
   const savePosition = useCallback((pos: Position) => {
-    chrome.storage.local.set({ askit_fab_pos: pos })
+    try { chrome.storage.local.set({ askit_fab_pos: pos }) } catch {}
   }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -68,7 +70,7 @@ export function FloatingButton() {
     if (movedRef.current) return
     if (collapsed) {
       setCollapsed(false)
-      chrome.storage.local.set({ askit_fab_collapsed: false })
+      try { chrome.storage.local.set({ askit_fab_collapsed: false }) } catch {}
     } else {
       toggleSidebar()
     }
@@ -77,7 +79,7 @@ export function FloatingButton() {
   const handleDoubleClick = useCallback(() => {
     setCollapsed(prev => {
       const next = !prev
-      chrome.storage.local.set({ askit_fab_collapsed: next })
+      try { chrome.storage.local.set({ askit_fab_collapsed: next }) } catch {}
       return next
     })
   }, [])
@@ -94,7 +96,13 @@ export function FloatingButton() {
       onDoubleClick={handleDoubleClick}
       title={collapsed ? 'Click to expand' : 'AskIt (Alt+J) · Double-click to minimize · Drag to move'}
     >
-      {collapsed ? '›' : '✦'}
+      {collapsed ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" strokeLinecap="round"/>
+        </svg>
+      )}
     </button>
   )
 }

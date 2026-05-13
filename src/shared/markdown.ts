@@ -19,6 +19,7 @@ hljs.registerLanguage('css', css)
 hljs.registerLanguage('html', xml)
 
 const marked = new Marked({
+  async: false,
   renderer: {
     code({ text, lang }) {
       const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext'

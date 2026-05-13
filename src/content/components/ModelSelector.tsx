@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useStore } from '@/shared/store'
 import { PROVIDERS } from '@/shared/providers'
 
+const EXTRA_MODELS: Record<string, string[]> = {
+  deepseek: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+  minimax: ['MiniMax-M2.7', 'MiniMax-Text-01'],
+  openai: ['gpt-4o', 'gpt-4o-mini'],
+}
+
 export function ModelSelector() {
   const { settings, setSettings } = useStore()
   const [open, setOpen] = useState(false)
@@ -16,7 +22,6 @@ export function ModelSelector() {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const provider = PROVIDERS[settings.provider]
   const modelName = settings.model.length > 16 ? settings.model.substring(0, 14) + '…' : settings.model
 
   return (
@@ -32,15 +37,20 @@ export function ModelSelector() {
           {Object.values(PROVIDERS).map(p => (
             <div key={p.id} className="askit-model-group">
               <div className="askit-model-group-label">{p.name}</div>
-              <button
-                className={`askit-model-option ${settings.provider === p.id && settings.model === p.models.chat ? 'active' : ''}`}
-                onClick={() => {
-                  setSettings({ ...settings, provider: p.id, apiBase: p.apiBase, model: p.models.chat })
-                  setOpen(false)
-                }}
-              >
-                {p.models.chat}
-              </button>
+              {(EXTRA_MODELS[p.id] || [p.models.chat]).map(model => (
+                <button
+                  key={model}
+                  className={`askit-model-option ${settings.provider === p.id && settings.model === model ? 'active' : ''}`}
+                  onClick={() => {
+                    const providerKeys = { ...settings.providerKeys, [settings.provider]: settings.apiKey }
+                    const restoredKey = providerKeys[p.id] || settings.apiKey
+                    setSettings({ ...settings, provider: p.id, apiBase: p.apiBase, model, apiKey: restoredKey, providerKeys })
+                    setOpen(false)
+                  }}
+                >
+                  {model}
+                </button>
+              ))}
             </div>
           ))}
         </div>

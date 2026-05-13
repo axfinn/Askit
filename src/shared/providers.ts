@@ -8,16 +8,15 @@ export const PROVIDERS: Record<string, Provider> = {
     models: {
       chat: 'MiniMax-M2.7',
       image: 'image-01',
-      tts: 'speech-01',
+      tts: 'speech-02-hd',
       music: 'music-2.6',
-      vision: 'MiniMax-VL-01',
     },
   },
   deepseek: {
     id: 'deepseek',
     name: 'DeepSeek',
     apiBase: 'https://api.deepseek.com/v1',
-    models: { chat: 'deepseek-chat' },
+    models: { chat: 'deepseek-v4-flash' },
   },
   openai: {
     id: 'openai',

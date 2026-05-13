@@ -11,6 +11,8 @@ export interface Settings {
   apiKey: string
   model: string
   temperature: number
+  webSearch?: boolean
+  providerKeys?: Record<string, string>
 }
 
 export interface Message {
@@ -18,6 +20,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
+  imageUrl?: string
 }
 
 export interface Conversation {
@@ -25,6 +28,32 @@ export interface Conversation {
   messages: Message[]
   title: string
   createdAt: number
+  updatedAt?: number
+}
+
+export interface ConversationMeta {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messageCount: number
+}
+
+export interface WritingTemplate {
+  id: string
+  icon: string
+  title: string
+  category: string
+  prompt: string
+}
+
+export interface CustomPrompt {
+  id: string
+  title: string
+  prompt: string
+  createdAt: number
 }
 
 export type ActionType = 'explain' | 'translate' | 'summarize' | 'rewrite' | 'grammar' | 'chat'
+
+export type PageType = 'normal' | 'youtube' | 'pdf' | 'search'

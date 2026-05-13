@@ -67,7 +67,12 @@ export function ChatMessage({ message, isLast }: Props) {
               <span className="askit-typing-dot"></span>
             </div>
           ) : isUser ? (
-            <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
+            <>
+              {message.imageUrl && (
+                <img src={message.imageUrl} alt="" className="askit-msg-image" />
+              )}
+              <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
+            </>
           ) : (
             <div dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content || '...') }} />
           )}

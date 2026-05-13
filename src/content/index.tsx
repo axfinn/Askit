@@ -3,7 +3,18 @@ import { createRoot } from 'react-dom/client'
 import { Sidebar } from './Sidebar'
 import { SelectionPopup } from './SelectionPopup'
 import { FloatingButton } from './components/FloatingButton'
+import { Sideline } from './components/Sideline'
+import { SearchEnhancement } from './components/SearchEnhancement'
+import { InputAssist } from './components/InputAssist'
 import contentCss from './content.css?inline'
+
+// Suppress "Extension context invalidated" errors after extension reload
+window.addEventListener('error', (e) => {
+  if (e.message?.includes('Extension context invalidated')) e.preventDefault()
+})
+window.addEventListener('unhandledrejection', (e) => {
+  if (String(e.reason).includes('Extension context invalidated')) e.preventDefault()
+})
 
 function init() {
   if (document.getElementById('askit-root')) return
@@ -33,8 +44,11 @@ function App() {
   return (
     <>
       <FloatingButton />
+      <Sideline />
       <Sidebar />
       <SelectionPopup />
+      <SearchEnhancement />
+      <InputAssist />
     </>
   )
 }
