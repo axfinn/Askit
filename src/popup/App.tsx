@@ -29,14 +29,24 @@ export function App() {
 
   function openSidebar() {
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      const tabId = tabs[0]?.id
-      if (!tabId) return
+      const tab = tabs[0]
+      if (!tab?.id || tab.url?.startsWith('chrome://') || tab.url?.startsWith('about:') || tab.url?.startsWith('chrome-extension://')) {
+        alert('请在普通网页上使用此功能')
+        return
+      }
       try {
-        await chrome.tabs.sendMessage(tabId, { type: 'ASKIT_TOGGLE_SIDEBAR' })
+        await chrome.tabs.sendMessage(tab.id, { type: 'ASKIT_TOGGLE_SIDEBAR' })
       } catch {
-        await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] })
-        await new Promise(r => setTimeout(r, 150))
-        await chrome.tabs.sendMessage(tabId, { type: 'ASKIT_TOGGLE_SIDEBAR' }).catch(() => {})
+        try {
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
+        } catch {
+          alert('无法在此页面注入，请在普通网页上使用')
+          return
+        }
+        await new Promise(r => setTimeout(r, 300))
+        try {
+          await chrome.tabs.sendMessage(tab.id, { type: 'ASKIT_TOGGLE_SIDEBAR' })
+        } catch {}
       }
       window.close()
     })

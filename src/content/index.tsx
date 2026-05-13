@@ -6,6 +6,7 @@ import { FloatingButton } from './components/FloatingButton'
 import { Sideline } from './components/Sideline'
 import { SearchEnhancement } from './components/SearchEnhancement'
 import { InputAssist } from './components/InputAssist'
+import { useStore } from '@/shared/store'
 import contentCss from './content.css?inline'
 
 // Suppress "Extension context invalidated" errors after extension reload
@@ -15,6 +16,15 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   if (String(e.reason).includes('Extension context invalidated')) e.preventDefault()
 })
+
+// Top-level message listener - works immediately when script loads, before React mounts
+try {
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'ASKIT_TOGGLE_SIDEBAR') {
+      useStore.getState().toggleSidebar()
+    }
+  })
+} catch {}
 
 function init() {
   if (document.getElementById('askit-root')) return
