@@ -38,8 +38,12 @@ export async function saveSettings(settings: Settings): Promise<void> {
 export async function getConversation(): Promise<Conversation | null> {
   if (!isContextValid()) return null
   try {
-    const result = await chrome.storage.local.get(['askit_conversation'])
-    return (result.askit_conversation as Conversation | undefined) ?? null
+    const result = await chrome.storage.local.get(['askit_conversation', 'askit_conversation_url'])
+    const conv = (result.askit_conversation as Conversation | undefined) ?? null
+    if (!conv) return null
+    const savedUrl = result.askit_conversation_url as string | undefined
+    if (savedUrl && savedUrl !== location.href) return null
+    return conv
   } catch {
     return null
   }
@@ -48,7 +52,7 @@ export async function getConversation(): Promise<Conversation | null> {
 export async function saveConversation(conv: Conversation): Promise<void> {
   if (!isContextValid()) return
   try {
-    await chrome.storage.local.set({ askit_conversation: conv })
+    await chrome.storage.local.set({ askit_conversation: conv, askit_conversation_url: location.href })
   } catch {}
 }
 
