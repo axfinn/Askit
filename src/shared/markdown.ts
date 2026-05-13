@@ -25,8 +25,9 @@ const marked = new Marked({
       const highlighted =
         language !== 'plaintext'
           ? hljs.highlight(text, { language }).value
-          : text
-      return `<pre class="hljs"><code class="language-${language}">${highlighted}</code></pre>`
+          : text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const escaped = text.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      return `<div class="askit-code-block"><div class="askit-code-header"><span class="askit-code-lang">${language}</span><button class="askit-code-copy" data-code="${escaped}">Copy</button></div><pre class="hljs"><code class="language-${language}">${highlighted}</code></pre></div>`
     },
   },
 })

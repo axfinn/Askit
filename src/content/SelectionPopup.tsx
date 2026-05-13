@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/shared/store'
-import { chatCompletion } from '@/shared/api'
+import { streamChat } from '@/shared/api'
 import { renderMarkdown } from '@/shared/markdown'
 
 interface PopupPosition {
@@ -24,6 +24,8 @@ export function SelectionPopup() {
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
   const [showResult, setShowResult] = useState(false)
+  const [activeAction, setActiveAction] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,13 +40,23 @@ export function SelectionPopup() {
           setSelectedText(text)
           const range = sel!.getRangeAt(0)
           const rect = range.getBoundingClientRect()
-          setPosition({
-            x: rect.left + rect.width / 2,
-            y: rect.bottom + window.scrollY + 8,
-          })
+
+          let x = rect.left + rect.width / 2
+          let y = rect.bottom + 8
+
+          // Viewport boundary detection
+          const popupWidth = 220
+          const popupHeight = 200
+          x = Math.max(popupWidth / 2 + 8, Math.min(x, window.innerWidth - popupWidth / 2 - 8))
+          if (y + popupHeight > window.innerHeight) {
+            y = rect.top - 8
+          }
+
+          setPosition({ x, y: y + window.scrollY })
           setVisible(true)
           setShowResult(false)
           setResult('')
+          setActiveAction(null)
         } else {
           setVisible(false)
           setShowResult(false)
@@ -74,9 +86,12 @@ export function SelectionPopup() {
       return
     }
 
+    if (abortRef.current) abortRef.current.abort()
+
     setLoading(true)
     setShowResult(true)
     setResult('')
+    setActiveAction(actionId)
 
     const prompts: Record<string, string> = {
       explain: `请用简洁的中文解释以下内容：\n\n"${selectedText}"`,
@@ -86,16 +101,29 @@ export function SelectionPopup() {
       grammar: `请检查以下文本的语法错误并给出修正：\n\n"${selectedText}"`,
     }
 
+    const abort = new AbortController()
+    abortRef.current = abort
+    let fullText = ''
+
     try {
-      const text = await chatCompletion(settings, [
-        { role: 'system', content: 'You are a helpful assistant. Be concise.' },
-        { role: 'user', content: prompts[actionId] ?? selectedText },
-      ])
-      setResult(text)
+      await streamChat(
+        settings,
+        [
+          { role: 'system', content: 'You are a helpful assistant. Be concise.' },
+          { role: 'user', content: prompts[actionId] ?? selectedText },
+        ],
+        {
+          onToken: (token) => { fullText += token; setResult(fullText) },
+          onDone: () => {},
+          onError: (err) => setResult(`Error: ${err.message}`),
+        },
+        abort.signal
+      )
     } catch (err: any) {
-      setResult(`Error: ${err.message}`)
+      if (err.name !== 'AbortError') setResult(`Error: ${err.message}`)
     } finally {
       setLoading(false)
+      abortRef.current = null
     }
   }
 
@@ -104,9 +132,11 @@ export function SelectionPopup() {
   }
 
   function handleClose() {
+    if (abortRef.current) abortRef.current.abort()
     setVisible(false)
     setShowResult(false)
     setResult('')
+    setActiveAction(null)
   }
 
   if (!visible) return null
@@ -122,7 +152,7 @@ export function SelectionPopup() {
             key={action.id}
             onClick={() => handleAction(action.id)}
             title={action.label}
-            className="askit-sel-btn"
+            className={`askit-sel-btn ${activeAction === action.id ? 'active' : ''}`}
           >
             {action.icon}
           </button>
@@ -131,20 +161,25 @@ export function SelectionPopup() {
 
       {showResult && (
         <div className="askit-inline-result">
-          {loading ? (
+          {result ? (
+            <>
+              <div className="content" dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
+              {loading && (
+                <div className="loading-indicator">
+                  <div className="spinner" />
+                </div>
+              )}
+            </>
+          ) : (
             <div className="loading">
               <div className="spinner" />
               <span>Thinking...</span>
             </div>
-          ) : (
-            <>
-              <div className="content" dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
-              <div className="actions">
-                <button className="action-btn" onClick={handleCopy}>📋 复制</button>
-                <button className="action-btn" onClick={handleClose}>✕ 关闭</button>
-              </div>
-            </>
           )}
+          <div className="actions">
+            <button className="action-btn" onClick={handleCopy}>📋 复制</button>
+            <button className="action-btn" onClick={handleClose}>✕ 关闭</button>
+          </div>
         </div>
       )}
     </div>

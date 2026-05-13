@@ -1,23 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useStore } from '@/shared/store'
-import { streamChat, chatCompletion } from '@/shared/api'
-import { renderMarkdown } from '@/shared/markdown'
+import { streamChat } from '@/shared/api'
 import { ChatMessage } from './components/ChatMessage'
+import { ModelSelector } from './components/ModelSelector'
+import { extractPageContent } from './utils/extractContent'
 import type { Message } from '@/shared/types'
 
-type SidebarTab = 'chat' | 'tools'
-
-function extractPageContent(): string {
-  const clone = document.body.cloneNode(true) as HTMLElement
-  const removeTags = ['script', 'style', 'nav', 'footer', 'header', 'aside', 'iframe', 'noscript']
-  removeTags.forEach((tag) => clone.querySelectorAll(tag).forEach((el) => el.remove()))
-  return (clone.innerText || '').replace(/\s+/g, ' ').trim().substring(0, 4000)
-}
-
 export function Sidebar() {
-  const { settings, messages, sidebarOpen, isStreaming, addMessage, updateLastMessage, setStreaming, setSidebarOpen, clearMessages, loadSettings } = useStore()
+  const { settings, messages, sidebarOpen, isStreaming, addMessage, updateLastMessage, setStreaming, setSidebarOpen, newConversation, loadSettings } = useStore()
   const [input, setInput] = useState('')
-  const [tab, setTab] = useState<SidebarTab>('chat')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -37,19 +28,34 @@ export function Sidebar() {
     return () => document.removeEventListener('keydown', handler)
   }, [sidebarOpen])
 
-  // Listen for messages from background/popup
   useEffect(() => {
     const listener = (msg: any) => {
       if (msg.type === 'ASKIT_TOGGLE_SIDEBAR') setSidebarOpen(!sidebarOpen)
       if (msg.type === 'ASKIT_ACTION') {
         setSidebarOpen(true)
-        setTab('chat')
         handleQuickActionWithText(msg.action, msg.text)
       }
     }
     chrome.runtime.onMessage.addListener(listener)
     return () => chrome.runtime.onMessage.removeListener(listener)
   }, [sidebarOpen])
+
+  // Listen for regenerate events from ChatMessage
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text
+      if (text) doStreamChat(text)
+    }
+    document.addEventListener('askit-regenerate', handler)
+    return () => document.removeEventListener('askit-regenerate', handler)
+  }, [settings, messages])
+
+  const handleInputResize = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px'
+  }, [])
 
   async function handleSend() {
     const text = input.trim()
@@ -62,7 +68,7 @@ export function Sidebar() {
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: Date.now() }
     addMessage(userMsg)
     setInput('')
-
+    if (inputRef.current) inputRef.current.style.height = 'auto'
     await doStreamChat(text)
   }
 
@@ -73,8 +79,8 @@ export function Sidebar() {
 
     const pageContext = extractPageContent()
     const systemPrompt = pageContext
-      ? `You are a helpful AI assistant. The user is viewing a webpage titled "${document.title}". Page content:\n\n${pageContext}\n\nAnswer questions using this context when relevant.`
-      : 'You are a helpful AI assistant.'
+      ? `You are a helpful AI assistant. The user is browsing: "${document.title}" (${location.href}).\n\nPage content:\n${pageContext}\n\nUse this context to answer questions. Respond in the same language as the user.`
+      : 'You are a helpful AI assistant. Respond in the same language as the user.'
 
     const chatMessages = [
       { role: 'system' as const, content: systemPrompt },
@@ -104,12 +110,13 @@ export function Sidebar() {
     const pageContent = extractPageContent()
     const prompts: Record<string, string> = {
       summarize: `请用中文总结以下页面内容的要点（3-5条）：\n\n${pageContent}`,
-      translate: `请将以下页面内容翻译成中文：\n\n${pageContent.substring(0, 3000)}`,
+      translate: `请将以下页面内容翻译成中文：\n\n${pageContent.substring(0, 4000)}`,
       extract: `请提取以下页面内容的大纲结构：\n\n${pageContent}`,
     }
     const text = prompts[action]
     if (!text) return
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: `📄 ${action === 'summarize' ? '总结页面' : action === 'translate' ? '翻译页面' : '提取大纲'}`, timestamp: Date.now() }
+    const labels: Record<string, string> = { summarize: '总结页面', translate: '翻译页面', extract: '提取大纲' }
+    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: `📄 ${labels[action] || action}`, timestamp: Date.now() }
     addMessage(userMsg)
     doStreamChat(text)
   }
@@ -131,85 +138,71 @@ export function Sidebar() {
     <div className="askit-sidebar">
       {/* Header */}
       <div className="askit-header">
-        <span className="askit-header-title">✦ AskIt</span>
-        <button className="askit-close-btn" onClick={() => setSidebarOpen(false)}>×</button>
-      </div>
-
-      {/* Tabs */}
-      <div className="askit-tabs">
-        <button className={`askit-tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>
-          💬 Chat
-        </button>
-        <button className={`askit-tab ${tab === 'tools' ? 'active' : ''}`} onClick={() => setTab('tools')}>
-          🛠️ Tools
-        </button>
-      </div>
-
-      {/* Chat Tab */}
-      {tab === 'chat' && (
-        <>
-          {/* Quick Tools */}
-          <div className="askit-tools">
-            <button className="askit-tool-btn" onClick={() => handleQuickAction('summarize')}>📄 总结</button>
-            <button className="askit-tool-btn" onClick={() => handleQuickAction('translate')}>🌐 翻译</button>
-            <button className="askit-tool-btn" onClick={() => handleQuickAction('extract')}>📝 大纲</button>
-            <button className="askit-tool-btn danger" onClick={clearMessages}>🗑️</button>
-          </div>
-
-          {/* Messages */}
-          <div className="askit-messages">
-            {messages.length === 0 && (
-              <div className="askit-empty">
-                <div className="askit-empty-icon">✦</div>
-                <div className="askit-empty-text">Ask anything about this page...</div>
-                <div className="askit-empty-sub">Alt+J to toggle • Select text for quick actions</div>
-              </div>
-            )}
-            {messages.map((msg) => <ChatMessage key={msg.id} message={msg} />)}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="askit-input-area">
-            <textarea
-              ref={inputRef}
-              className="askit-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-              placeholder="Ask anything..."
-              rows={2}
-            />
-            {isStreaming ? (
-              <button className="askit-send-btn stop" onClick={() => { abortRef.current?.abort(); setStreaming(false) }}>■</button>
-            ) : (
-              <button className="askit-send-btn" onClick={handleSend}>➤</button>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Tools Tab */}
-      {tab === 'tools' && (
-        <div className="askit-tools-page">
-          <ToolButton icon="📄" title="Summarize Page" desc="Get key points from this page" onClick={() => { setTab('chat'); handleQuickAction('summarize') }} />
-          <ToolButton icon="🌐" title="Translate Page" desc="Translate page content to Chinese" onClick={() => { setTab('chat'); handleQuickAction('translate') }} />
-          <ToolButton icon="📝" title="Extract Outline" desc="Get the structure of this page" onClick={() => { setTab('chat'); handleQuickAction('extract') }} />
-          <ToolButton icon="📸" title="Analyze Screenshot" desc="Capture and analyze current view" onClick={() => {}} />
+        <div className="askit-header-left">
+          <span className="askit-header-logo">✦</span>
+          <ModelSelector />
         </div>
-      )}
-    </div>
-  )
-}
-
-function ToolButton({ icon, title, desc, onClick }: { icon: string; title: string; desc: string; onClick: () => void }) {
-  return (
-    <button className="askit-tool-card" onClick={onClick}>
-      <span className="askit-tool-card-icon">{icon}</span>
-      <div>
-        <div className="askit-tool-card-title">{title}</div>
-        <div className="askit-tool-card-desc">{desc}</div>
+        <div className="askit-header-right">
+          <button className="askit-header-btn" onClick={newConversation} title="New Chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button className="askit-header-btn" onClick={() => setSidebarOpen(false)} title="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
-    </button>
+
+      {/* Quick Tools */}
+      <div className="askit-tools">
+        <button className="askit-tool-btn" onClick={() => handleQuickAction('summarize')}>📄 总结</button>
+        <button className="askit-tool-btn" onClick={() => handleQuickAction('translate')}>🌐 翻译</button>
+        <button className="askit-tool-btn" onClick={() => handleQuickAction('extract')}>📝 大纲</button>
+      </div>
+
+      {/* Messages */}
+      <div className="askit-messages">
+        {messages.length === 0 && (
+          <div className="askit-empty">
+            <div className="askit-empty-icon">✦</div>
+            <div className="askit-empty-text">Ask anything about this page</div>
+            <div className="askit-empty-sub">Alt+J toggle · Select text for quick actions</div>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <ChatMessage key={msg.id} message={msg} isLast={i === messages.length - 1} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="askit-input-area">
+        <textarea
+          ref={inputRef}
+          className="askit-input"
+          value={input}
+          onChange={handleInputResize}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+          placeholder="Ask anything..."
+          rows={1}
+        />
+        {isStreaming ? (
+          <button className="askit-send-btn stop" onClick={() => { abortRef.current?.abort(); setStreaming(false) }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </button>
+        ) : (
+          <button className="askit-send-btn" onClick={handleSend}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        )}
+      </div>
+      <div className="askit-input-footer">
+        <span>{settings.model}</span>
+        <span>Enter send · Shift+Enter newline</span>
+      </div>
+    </div>
   )
 }
