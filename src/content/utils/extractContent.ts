@@ -15,23 +15,113 @@ export function extractPageContent(): string {
   const title = document.title || ''
   const url = location.href
 
-  // Always get full visible page text as the base
-  const fullText = extractFullPageText()
+  // Extract structured content cards (title + image + link + metadata)
+  const cards = extractContentCards()
 
-  // Site-specific structured data as prefix (if available)
+  // Site-specific structured data
   const structured = extractStructured(url)
 
-  // Extract page images and links for AI access
+  // Full visible text
+  const fullText = extractFullPageText()
+
+  // Standalone images not captured by cards
   const images = extractPageImages()
-  const links = extractPageLinks()
 
   let result = `# ${title}\n\nURL: ${url}\n\n`
   if (structured) result += structured + '\n\n---\n\n'
+  if (cards) result += `## 页面内容卡片\n${cards}\n\n---\n\n`
   result += fullText
-  if (images) result += `\n\n---\n\n## 页面图片\n${images}`
-  if (links) result += `\n\n## 页面链接\n${links}`
+  if (images) result += `\n\n---\n\n## 页面图片资源\n${images}`
 
-  return result.substring(0, 18000)
+  return result.substring(0, 20000)
+}
+
+function extractContentCards(): string {
+  const cards: string[] = []
+
+  // Common card patterns across sites
+  const cardSelectors = [
+    // Bilibili
+    '.bili-video-card', '.video-card', '.feed-card', '.floor-single-card',
+    '.bili-live-card', '[class*="video-card"]', '[class*="VideoCard"]',
+    // YouTube
+    'ytd-rich-item-renderer', 'ytd-video-renderer', 'ytd-compact-video-renderer',
+    // Generic
+    'article', '[role="article"]', '.card', '.post', '.item',
+    '[class*="feed-item"]', '[class*="post-item"]', '[class*="article-item"]',
+    '[class*="content-card"]', '[class*="recommend"]',
+  ]
+
+  let cardEls: Element[] = []
+  for (const sel of cardSelectors) {
+    const els = document.querySelectorAll(sel)
+    if (els.length >= 2) {
+      cardEls = Array.from(els)
+      break
+    }
+  }
+
+  // If no card pattern found, try generic approach
+  if (cardEls.length === 0) {
+    // Look for repeated sibling structures with images
+    const containers = document.querySelectorAll('ul, ol, [class*="list"], [class*="grid"], [class*="feed"]')
+    for (const container of containers) {
+      const children = Array.from(container.children).filter(c => {
+        const img = c.querySelector('img')
+        const text = c.textContent?.trim()
+        return img && text && text.length > 10
+      })
+      if (children.length >= 3) {
+        cardEls = children
+        break
+      }
+    }
+  }
+
+  for (const card of cardEls.slice(0, 40)) {
+    const el = card as HTMLElement
+    const parts: string[] = []
+
+    // Title
+    const titleEl = el.querySelector('h1, h2, h3, h4, [class*="title"], a[title]')
+    const cardTitle = titleEl?.textContent?.trim() || titleEl?.getAttribute('title') || ''
+    if (cardTitle) parts.push(`标题: ${cardTitle}`)
+
+    // Link
+    const linkEl = el.querySelector('a[href]')
+    let href = linkEl?.getAttribute('href') || ''
+    if (href.startsWith('//')) href = 'https:' + href
+    else if (href.startsWith('/')) href = location.origin + href
+    if (href.startsWith('http')) parts.push(`链接: ${href}`)
+
+    // Image
+    const imgEl = el.querySelector('img, [data-src], source')
+    const imgSrc = imgEl?.getAttribute('src') || imgEl?.getAttribute('data-src') || imgEl?.getAttribute('data-original') || ''
+    let imgUrl = imgSrc
+    if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl
+    if (imgUrl.startsWith('http')) parts.push(`封面: ${imgUrl}`)
+
+    // Author/UP主
+    const authorEl = el.querySelector('[class*="author"], [class*="name"], [class*="up"], [class*="user"], .owner')
+    const author = authorEl?.textContent?.trim()
+    if (author && author.length < 30) parts.push(`作者: ${author}`)
+
+    // Stats (views, likes, duration, time)
+    const statsEl = el.querySelector('[class*="count"], [class*="stat"], [class*="view"], [class*="play"], [class*="duration"], time')
+    const stats = statsEl?.textContent?.trim()
+    if (stats && stats.length < 50) parts.push(`数据: ${stats}`)
+
+    // Description/summary
+    const descEl = el.querySelector('[class*="desc"], [class*="summary"], [class*="intro"], p')
+    const desc = descEl?.textContent?.trim()
+    if (desc && desc.length > 10 && desc !== cardTitle) parts.push(`描述: ${desc.substring(0, 150)}`)
+
+    if (parts.length >= 2) {
+      cards.push(parts.join(' | '))
+    }
+  }
+
+  return cards.join('\n')
 }
 
 function extractPageImages(): string {
@@ -72,26 +162,6 @@ function extractPageImages(): string {
   })
 
   return results.length > 0 ? results.slice(0, 80).join('\n') : ''
-}
-
-function extractPageLinks(): string {
-  const seen = new Set<string>()
-  const results: string[] = []
-
-  document.querySelectorAll('a[href]').forEach(el => {
-    const href = el.getAttribute('href') || ''
-    let url = href
-    if (url.startsWith('//')) url = 'https:' + url
-    else if (url.startsWith('/')) url = location.origin + url
-    if (!url.startsWith('http')) return
-    if (seen.has(url)) return
-    seen.add(url)
-    const text = el.textContent?.trim().substring(0, 80) || ''
-    if (!text) return
-    results.push(`${text}: ${url}`)
-  })
-
-  return results.length > 0 ? results.slice(0, 50).join('\n') : ''
 }
 
 function extractStructured(url: string): string | null {
