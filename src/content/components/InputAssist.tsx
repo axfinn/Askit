@@ -128,14 +128,36 @@ export function InputAssist() {
     }
   }
 
+  function getInputContext(el: HTMLElement): string {
+    const pageTitle = document.title || ''
+    const url = location.href
+
+    // Get placeholder text for hint about what the field expects
+    const placeholder = el.getAttribute('placeholder') || ''
+    const label = el.closest('label')?.textContent?.trim()
+      || document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim()
+      || ''
+
+    // Get surrounding text (parent container)
+    const parent = el.closest('form, [class*="comment"], [class*="reply"], [class*="editor"], [class*="input"], div') as HTMLElement
+    const nearby = parent?.innerText?.substring(0, 300) || ''
+
+    let context = `页面: ${pageTitle}\n网址: ${url}\n`
+    if (placeholder) context += `输入框提示: ${placeholder}\n`
+    if (label) context += `字段标签: ${label}\n`
+    if (nearby) context += `周围内容: ${nearby}\n`
+    return context
+  }
+
   async function handleAction(actionId: string) {
     if (!targetRef.current || !settings.apiKey) return
     const currentText = getInputValue(targetRef.current)
+    const context = getInputContext(targetRef.current)
     setLoading(true)
     setExpanded(false)
 
     const prompts: Record<string, string> = {
-      compose: `用户在输入框中，请帮他写一段合适的内容。输入框当前内容："${currentText}"。如果为空，写一段通用的专业回复。只输出内容本身，不要解释。`,
+      compose: `根据以下上下文，帮用户写一段适合当前场景的内容。\n\n${context}\n输入框已有内容："${currentText}"\n\n要求：根据页面场景和输入框用途生成贴切的内容。如果是评论区就写评论，如果是搜索框就写搜索词，如果是聊天就写回复。只输出内容本身，不要解释。`,
       rewrite: `改写以下内容，使其更专业流畅，保持原意。只输出改写结果：\n\n${currentText}`,
       translate: `将以下内容翻译（中文翻英文，英文翻中文）。只输出翻译结果：\n\n${currentText}`,
       expand: `扩写以下内容，增加细节和深度，保持原意。只输出扩写结果：\n\n${currentText}`,
@@ -160,12 +182,13 @@ export function InputAssist() {
   async function handleCustomPrompt() {
     if (!targetRef.current || !settings.apiKey || !customPrompt.trim()) return
     const currentText = getInputValue(targetRef.current)
+    const context = getInputContext(targetRef.current)
     setLoading(true)
     setExpanded(false)
 
     const fullPrompt = currentText
-      ? `用户指令："${customPrompt}"\n\n输入框当前内容：\n${currentText}\n\n请根据用户指令处理内容，只输出结果，不要解释。`
-      : `用户指令："${customPrompt}"\n\n请根据指令生成内容，只输出结果，不要解释。`
+      ? `${context}\n用户指令："${customPrompt}"\n\n输入框当前内容：\n${currentText}\n\n请根据用户指令处理内容，只输出结果，不要解释。`
+      : `${context}\n用户指令："${customPrompt}"\n\n请根据指令和页面上下文生成内容，只输出结果，不要解释。`
 
     try {
       const result = await chatCompletion(settings, [{ role: 'user', content: fullPrompt }])
