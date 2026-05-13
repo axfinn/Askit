@@ -138,15 +138,38 @@ export function InputAssist() {
       || document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim()
       || ''
 
-    // Get surrounding text (parent container)
-    const parent = el.closest('form, [class*="comment"], [class*="reply"], [class*="editor"], [class*="input"], div') as HTMLElement
-    const nearby = parent?.innerText?.substring(0, 300) || ''
+    // Get surrounding text (parent container - comment area, form, etc.)
+    const parent = el.closest('form, [class*="comment"], [class*="reply"], [class*="editor"], [class*="post"], section, article') as HTMLElement
+    const nearby = parent ? parent.innerText?.substring(0, 500) : ''
+
+    // Get page main content for context (what is the user looking at)
+    const mainContent = getPageMainContent()
 
     let context = `页面: ${pageTitle}\n网址: ${url}\n`
     if (placeholder) context += `输入框提示: ${placeholder}\n`
     if (label) context += `字段标签: ${label}\n`
-    if (nearby) context += `周围内容: ${nearby}\n`
+    if (nearby) context += `输入框附近内容: ${nearby}\n`
+    if (mainContent) context += `\n页面正文摘要:\n${mainContent}\n`
     return context
+  }
+
+  function getPageMainContent(): string {
+    // Grab the main visible content of the page (post, video title, article, etc.)
+    const selectors = [
+      'article', '[role="article"]', 'main', '[role="main"]',
+      '.post-content', '.article-content', '.video-title',
+      '.detail', '[class*="content"]', '[class*="detail"]',
+      'h1', '.title',
+    ]
+    for (const sel of selectors) {
+      const el = document.querySelector(sel) as HTMLElement
+      if (el && el.innerText?.trim().length > 50) {
+        return el.innerText.trim().substring(0, 1500)
+      }
+    }
+    // Fallback: first meaningful text on page
+    const body = document.body.innerText || ''
+    return body.substring(0, 1500)
   }
 
   async function handleAction(actionId: string) {
