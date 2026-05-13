@@ -35,7 +35,7 @@ function extractSmart(): ExtractedContent {
   const url = location.href
 
   const siteContent = extractBySite(url)
-  if (siteContent) return { title, content: siteContent, url }
+  if (siteContent && siteContent.length > 200) return { title, content: siteContent, url }
 
   const semanticContent = extractBySemanticTags()
   if (semanticContent && semanticContent.length > 200) {
@@ -43,7 +43,12 @@ function extractSmart(): ExtractedContent {
   }
 
   const densityContent = extractByTextDensity()
-  return { title, content: densityContent, url }
+  if (densityContent && densityContent.length > 200) {
+    return { title, content: densityContent, url }
+  }
+
+  // Ultimate fallback: grab all visible text from body
+  return { title, content: extractFullPageText(), url }
 }
 
 function extractBySite(url: string): string | null {
@@ -58,21 +63,44 @@ function extractBySite(url: string): string | null {
 
 function extractBilibili(): string {
   const parts: string[] = []
-  const title = document.querySelector('h1.video-title, .video-title')?.textContent?.trim()
+  const title = document.querySelector('h1.video-title, .video-title, [class*="title"]')?.textContent?.trim()
   if (title) parts.push(`## ${title}`)
 
-  const desc = document.querySelector('.basic-desc-info, .desc-info-text')?.textContent?.trim()
-  if (desc) parts.push(`\n${desc}`)
+  // UP主信息
+  const upName = document.querySelector('.up-name, [class*="username"], .up-info .name')?.textContent?.trim()
+  if (upName) parts.push(`UP主: ${upName}`)
 
-  const tags = Array.from(document.querySelectorAll('.tag-link, .video-tag'))
+  // 视频数据
+  const stats = document.querySelector('.video-data, [class*="video-info-detail"]')?.textContent?.trim()
+  if (stats) parts.push(`数据: ${stats}`)
+
+  // 简介
+  const desc = document.querySelector('.basic-desc-info, .desc-info-text, [class*="desc"], .video-desc')?.textContent?.trim()
+  if (desc) parts.push(`\n简介: ${desc}`)
+
+  // Tags
+  const tags = Array.from(document.querySelectorAll('.tag-link, .video-tag, [class*="tag"] a'))
     .map(el => el.textContent?.trim()).filter(Boolean)
   if (tags.length) parts.push(`\nTags: ${tags.join(', ')}`)
 
-  const comments = Array.from(document.querySelectorAll('.reply-content .reply-content-container'))
-    .slice(0, 10)
-    .map(el => `- ${el.textContent?.trim()}`)
-    .filter(t => t.length > 3)
-  if (comments.length) parts.push(`\n## 热门评论\n${comments.join('\n')}`)
+  // 评论
+  const comments = Array.from(document.querySelectorAll('.reply-content .reply-content-container, .reply-item .root-reply .reply-content, [class*="reply-content"]'))
+    .slice(0, 20)
+    .map(el => {
+      const text = (el as HTMLElement).innerText?.trim()
+      return text ? `- ${text}` : ''
+    })
+    .filter(t => t.length > 5)
+  if (comments.length) parts.push(`\n## 评论 (${comments.length}条)\n${comments.join('\n')}`)
+
+  // 如果以上都没抓到多少，用页面主体内容兜底
+  if (parts.join('').length < 200) {
+    const main = document.querySelector('#app, #bilibili-player') as HTMLElement
+    if (main) {
+      const text = main.innerText?.trim()
+      if (text) parts.push(`\n${text.substring(0, 10000)}`)
+    }
+  }
 
   return parts.join('\n')
 }
@@ -188,8 +216,17 @@ function extractByTextDensity(): string {
   const best = blocks[0]
   if (best) return domToMarkdown(best.el)
 
-  // Ultimate fallback: full page text
-  return document.body.innerText?.replace(/\s+/g, ' ').trim().substring(0, 12000) || ''
+  return ''
+}
+
+function extractFullPageText(): string {
+  const clone = document.body.cloneNode(true) as HTMLElement
+  NOISE_SELECTORS.forEach(sel => {
+    clone.querySelectorAll(sel).forEach(el => el.remove())
+  })
+  const text = clone.innerText || ''
+  // Collapse excessive whitespace but keep paragraph breaks
+  return text.replace(/\n{3,}/g, '\n\n').trim().substring(0, 14000)
 }
 
 function domToMarkdown(root: HTMLElement): string {
