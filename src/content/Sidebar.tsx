@@ -57,11 +57,22 @@ export function Sidebar() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const resizingRef = useRef(false)
+  const pageUrlRef = useRef<string>(location.href)
 
   useEffect(() => { loadSettings() }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { if (sidebarOpen) inputRef.current?.focus() }, [sidebarOpen])
   useEffect(() => { setPageType(detectPageType()) }, [sidebarOpen])
+
+  // New page → new conversation
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const currentUrl = location.href
+    if (pageUrlRef.current !== currentUrl && messages.length > 0) {
+      newConversation()
+    }
+    pageUrlRef.current = currentUrl
+  }, [sidebarOpen])
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
