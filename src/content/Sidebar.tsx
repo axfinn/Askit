@@ -83,17 +83,6 @@ export function Sidebar() {
   }, [sidebarWidth])
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.altKey || e.metaKey) && e.key === 'j') {
-        e.preventDefault()
-        toggleSidebar()
-      }
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [])
-
-  useEffect(() => {
     const listener = (msg: any) => {
       try {
         if (msg.type === 'ASKIT_ACTION') {

@@ -26,6 +26,14 @@ try {
   })
 } catch {}
 
+// Top-level hotkey listener - guaranteed to work regardless of Shadow DOM
+document.addEventListener('keydown', (e) => {
+  if ((e.altKey || e.metaKey) && e.key === 'j') {
+    e.preventDefault()
+    useStore.getState().toggleSidebar()
+  }
+})
+
 function init() {
   if (document.getElementById('askit-root')) return
 
