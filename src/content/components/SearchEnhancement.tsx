@@ -37,9 +37,9 @@ export function SearchEnhancement() {
     setResult('')
 
     const messages: Message[] = [
-      { role: 'system', content: 'You are a helpful AI assistant. Provide a concise, informative answer to the search query. Use markdown formatting. Respond in the same language as the query.' },
+      { role: 'system', content: '你是搜索增强助手。用户正在搜索引擎中搜索内容，你的任务是直接回答用户的搜索问题。规则：1. 直接给出答案，不要反问用户、不要要求提供链接或更多信息。2. 简洁有条理，使用 Markdown 格式。3. 用与搜索词相同的语言回答。4. 如果搜索词模糊，给出最可能的解释。' },
       ...prevHistory,
-      { role: 'user', content: q },
+      { role: 'user', content: `搜索：${q}` },
     ]
 
     let fullText = ''
